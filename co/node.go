@@ -229,8 +229,8 @@ func (n *Node) applyChanges(lifeCtx context.Context, changes []*api.HeadChange) 
 	}
 }
 
-func (n *Node) loadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
-	reqCtx, reqCancel := context.WithTimeout(n.ctx, n.opt.APITimeout)
+func (n *Node) loadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	reqCtx, reqCancel := context.WithTimeout(ctx, n.opt.APITimeout)
 	defer reqCancel()
 
 	var wg multierror.Group

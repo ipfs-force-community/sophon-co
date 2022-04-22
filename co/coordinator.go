@@ -1,7 +1,6 @@
 package co
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -129,10 +128,7 @@ func (c *Coordinator) handleCandidate(hc *headCandidate) {
 }
 
 func (c *Coordinator) applyTipSetChange(prev, next *types.TipSet, node *Node) ([]*api.HeadChange, error) {
-	revert, apply, err := store.ReorgOps(context.TODO(),
-		func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
-			return node.loadTipSet(tsk)
-		}, prev, next)
+	revert, apply, err := store.ReorgOps(node.ctx, node.loadTipSet, prev, next)
 	if err != nil {
 		return nil, err
 	}

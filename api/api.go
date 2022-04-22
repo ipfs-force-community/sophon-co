@@ -556,7 +556,7 @@ type UnSupport interface {
 	// of status updates.
 	ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error)
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
-	//ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error)
+	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*api.StorageAsk, error)
 	// ClientCalcCommP calculates the CommP and data size of the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error)
 	// ClientCalcCommP calculates the CommP for a specified file
@@ -744,7 +744,8 @@ type UnSupport interface {
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
 
-	//PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)                  //perm:sign
+	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts api.PaychGetOpts) (*api.ChannelInfo, error) //perm:sign
+
 	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)                                                 //perm:sign
 	PaychAvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error)                     //perm:sign
 	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*api.ChannelAvailableFunds, error)       //perm:sign
@@ -798,8 +799,6 @@ type UnSupport interface {
 	NetStat(ctx context.Context, scope string) (api.NetStat, error)
 	NetLimit(ctx context.Context, scope string) (api.NetLimit, error)
 	NetSetLimit(ctx context.Context, scope string, limit api.NetLimit) error
-	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*api.StorageAsk, error)
 	StateLookupRobustAddress(ctx context.Context, a address.Address, key types.TipSetKey) (address.Address, error)
-	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts api.PaychGetOpts) (*api.ChannelInfo, error)
 	PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)
 }
