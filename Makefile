@@ -52,6 +52,10 @@ dist-clean:
 	git clean -xdff
 	git submodule deinit --all -f
 
+proxy-gen:
+	go run scripts/proxy-gen.go
+.PHONY: proxy-gen
+
 build: $(BUILD_DEPS)
 	rm -f chain-co
 	go build -o ./chain-co $(GOFLAGS) ./cmd
