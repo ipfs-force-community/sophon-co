@@ -23,10 +23,10 @@ import (
 	"github.com/ipfs-force-community/chain-co/api"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 )
 
 var _ UnSupportAPI = (*UnSupport)(nil)
@@ -85,14 +85,6 @@ func (p *UnSupport) ChainDeleteObj(in0 context.Context, in1 cid.Cid) (err error)
 	return cli.ChainDeleteObj(in0, in1)
 }
 
-func (p *UnSupport) ChainPutObj(in0 context.Context, in1 blocks.Block) error {
-	cli, err := p.Select()
-	if err != nil {
-		return fmt.Errorf("api ChainPutObj %v", err)
-	}
-	return cli.ChainPutObj(in0, in1)
-}
-
 func (p *UnSupport) ChainExport(in0 context.Context, in1 abi.ChainEpoch, in2 bool, in3 types.TipSetKey) (out0 <-chan []uint8, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -109,6 +101,24 @@ func (p *UnSupport) ChainGetNode(in0 context.Context, in1 string) (out0 *api1.Ip
 		return
 	}
 	return cli.ChainGetNode(in0, in1)
+}
+
+func (p *UnSupport) ChainPrune(in0 context.Context, in1 api1.PruneOpts) (err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api ChainPrune %v", err)
+		return
+	}
+	return cli.ChainPrune(in0, in1)
+}
+
+func (p *UnSupport) ChainPutObj(in0 context.Context, in1 blocks.Block) (err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api ChainPutObj %v", err)
+		return
+	}
+	return cli.ChainPutObj(in0, in1)
 }
 
 func (p *UnSupport) ChainSetHead(in0 context.Context, in1 types.TipSetKey) (err error) {
@@ -849,6 +859,15 @@ func (p *UnSupport) NetFindPeer(in0 context.Context, in1 peer.ID) (out0 peer.Add
 	return cli.NetFindPeer(in0, in1)
 }
 
+func (p *UnSupport) NetLimit(in0 context.Context, in1 string) (out0 api1.NetLimit, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api NetLimit %v", err)
+		return
+	}
+	return cli.NetLimit(in0, in1)
+}
+
 func (p *UnSupport) NetPeerInfo(in0 context.Context, in1 peer.ID) (out0 *api1.ExtendedPeerInfo, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -867,15 +886,6 @@ func (p *UnSupport) NetPeers(in0 context.Context) (out0 []peer.AddrInfo, err err
 	return cli.NetPeers(in0)
 }
 
-func (p *UnSupport) NetPubsubScores(in0 context.Context) (out0 []api1.PubsubScore, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api NetPubsubScores %v", err)
-		return
-	}
-	return cli.NetPubsubScores(in0)
-}
-
 func (p *UnSupport) NetPing(in0 context.Context, in1 peer.ID) (out0 time.Duration, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -885,20 +895,13 @@ func (p *UnSupport) NetPing(in0 context.Context, in1 peer.ID) (out0 time.Duratio
 	return cli.NetPing(in0, in1)
 }
 
-func (p *UnSupport) NetProtectAdd(in0 context.Context, in1 []peer.ID) error {
+func (p *UnSupport) NetProtectAdd(in0 context.Context, in1 []peer.ID) (err error) {
 	cli, err := p.Select()
 	if err != nil {
-		return fmt.Errorf("api NetProtectAdd %v", err)
+		err = fmt.Errorf("api NetProtectAdd %v", err)
+		return
 	}
 	return cli.NetProtectAdd(in0, in1)
-}
-
-func (p *UnSupport) NetProtectRemove(in0 context.Context, in1 []peer.ID) error {
-	cli, err := p.Select()
-	if err != nil {
-		return fmt.Errorf("api NetProtectRemove %v", err)
-	}
-	return cli.NetProtectRemove(in0, in1)
 }
 
 func (p *UnSupport) NetProtectList(in0 context.Context) (out0 []peer.ID, err error) {
@@ -910,6 +913,33 @@ func (p *UnSupport) NetProtectList(in0 context.Context) (out0 []peer.ID, err err
 	return cli.NetProtectList(in0)
 }
 
+func (p *UnSupport) NetProtectRemove(in0 context.Context, in1 []peer.ID) (err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api NetProtectRemove %v", err)
+		return
+	}
+	return cli.NetProtectRemove(in0, in1)
+}
+
+func (p *UnSupport) NetPubsubScores(in0 context.Context) (out0 []api1.PubsubScore, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api NetPubsubScores %v", err)
+		return
+	}
+	return cli.NetPubsubScores(in0)
+}
+
+func (p *UnSupport) NetSetLimit(in0 context.Context, in1 string, in2 api1.NetLimit) (err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api NetSetLimit %v", err)
+		return
+	}
+	return cli.NetSetLimit(in0, in1, in2)
+}
+
 func (p *UnSupport) NetStat(in0 context.Context, in1 string) (out0 api1.NetStat, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -917,23 +947,6 @@ func (p *UnSupport) NetStat(in0 context.Context, in1 string) (out0 api1.NetStat,
 		return
 	}
 	return cli.NetStat(in0, in1)
-}
-
-func (p *UnSupport) NetLimit(in0 context.Context, in1 string) (out0 api1.NetLimit, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api NetLimit %v", err)
-		return
-	}
-	return cli.NetLimit(in0, in1)
-}
-
-func (p *UnSupport) NetSetLimit(in0 context.Context, in1 string, in2 api1.NetLimit) error {
-	cli, err := p.Select()
-	if err != nil {
-		return fmt.Errorf("api NetSetLimit %v", err)
-	}
-	return cli.NetSetLimit(in0, in1, in2)
 }
 
 func (p *UnSupport) NodeStatus(in0 context.Context, in1 bool) (out0 api1.NodeStatus, err error) {
@@ -979,6 +992,15 @@ func (p *UnSupport) PaychCollect(in0 context.Context, in1 address.Address) (out0
 		return
 	}
 	return cli.PaychCollect(in0, in1)
+}
+
+func (p *UnSupport) PaychFund(in0 context.Context, in1 address.Address, in2 address.Address, in3 big.Int) (out0 *api1.ChannelInfo, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api PaychFund %v", err)
+		return
+	}
+	return cli.PaychFund(in0, in1, in2, in3)
 }
 
 func (p *UnSupport) PaychGet(in0 context.Context, in1 address.Address, in2 address.Address, in3 big.Int, in4 api1.PaychGetOpts) (out0 *api1.ChannelInfo, err error) {
@@ -1087,15 +1109,6 @@ func (p *UnSupport) PaychVoucherSubmit(in0 context.Context, in1 address.Address,
 		return
 	}
 	return cli.PaychVoucherSubmit(in0, in1, in2, in3, in4)
-}
-
-func (p *UnSupport) PaychFund(in0 context.Context, in1, in2 address.Address, in3 types.BigInt) (out0 *api1.ChannelInfo, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api PaychFund %v", err)
-		return
-	}
-	return cli.PaychFund(in0, in1, in2, in3)
 }
 
 func (p *UnSupport) Session(in0 context.Context) (out0 uuid.UUID, err error) {

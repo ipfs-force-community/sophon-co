@@ -8,12 +8,13 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	api1 "github.com/filecoin-project/lotus/api"
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	miner1 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs-force-community/chain-co/api"
@@ -31,15 +32,6 @@ type Proxy struct {
 }
 
 // impl api.Proxy
-func (p *Proxy) StateGetBeaconEntry(in0 context.Context, in1 abi.ChainEpoch) (out0 *types.BeaconEntry, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api StateGetBeaconEntry %v", err)
-		return
-	}
-	return cli.StateGetBeaconEntry(in0, in1)
-}
-
 func (p *Proxy) BeaconGetEntry(in0 context.Context, in1 abi.ChainEpoch) (out0 *types.BeaconEntry, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -274,6 +266,15 @@ func (p *Proxy) MinerGetBaseInfo(in0 context.Context, in1 address.Address, in2 a
 	return cli.MinerGetBaseInfo(in0, in1, in2, in3)
 }
 
+func (p *Proxy) MpoolBatchPush(in0 context.Context, in1 []*types.SignedMessage) (out0 []cid.Cid, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api MpoolBatchPush %v", err)
+		return
+	}
+	return cli.MpoolBatchPush(in0, in1)
+}
+
 func (p *Proxy) MpoolGetNonce(in0 context.Context, in1 address.Address) (out0 uint64, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -328,15 +329,6 @@ func (p *Proxy) MpoolPushMessage(in0 context.Context, in1 *types.Message, in2 *a
 	return cli.MpoolPushMessage(in0, in1, in2)
 }
 
-func (p *Proxy) MpoolBatchPush(in0 context.Context, in1 []*types.SignedMessage) (out0 []cid.Cid, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api MpoolBatchPush %v", err)
-		return
-	}
-	return cli.MpoolBatchPush(in0, in1)
-}
-
 func (p *Proxy) MpoolSelect(in0 context.Context, in1 types.TipSetKey, in2 float64) (out0 []*types.SignedMessage, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -364,13 +356,22 @@ func (p *Proxy) StateAccountKey(in0 context.Context, in1 address.Address, in2 ty
 	return cli.StateAccountKey(in0, in1, in2)
 }
 
-func (p *Proxy) StateLookupRobustAddress(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 address.Address, err error) {
+func (p *Proxy) StateActorCodeCIDs(in0 context.Context, in1 network.Version) (out0 map[string]cid.Cid, err error) {
 	cli, err := p.Select()
 	if err != nil {
-		err = fmt.Errorf("api StateLookupRobustAddress %v", err)
+		err = fmt.Errorf("api StateActorCodeCIDs %v", err)
 		return
 	}
-	return cli.StateLookupRobustAddress(in0, in1, in2)
+	return cli.StateActorCodeCIDs(in0, in1)
+}
+
+func (p *Proxy) StateActorManifestCID(in0 context.Context, in1 network.Version) (out0 cid.Cid, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateActorManifestCID %v", err)
+		return
+	}
+	return cli.StateActorManifestCID(in0, in1)
 }
 
 func (p *Proxy) StateAllMinerFaults(in0 context.Context, in1 abi.ChainEpoch, in2 types.TipSetKey) (out0 []*api1.Fault, err error) {
@@ -409,6 +410,15 @@ func (p *Proxy) StateCirculatingSupply(in0 context.Context, in1 types.TipSetKey)
 	return cli.StateCirculatingSupply(in0, in1)
 }
 
+func (p *Proxy) StateComputeDataCID(in0 context.Context, in1 address.Address, in2 abi.RegisteredSealProof, in3 []abi.DealID, in4 types.TipSetKey) (out0 cid.Cid, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateComputeDataCID %v", err)
+		return
+	}
+	return cli.StateComputeDataCID(in0, in1, in2, in3, in4)
+}
+
 func (p *Proxy) StateDealProviderCollateralBounds(in0 context.Context, in1 abi.PaddedPieceSize, in2 bool, in3 types.TipSetKey) (out0 api1.DealCollateralBounds, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -425,6 +435,69 @@ func (p *Proxy) StateGetActor(in0 context.Context, in1 address.Address, in2 type
 		return
 	}
 	return cli.StateGetActor(in0, in1, in2)
+}
+
+func (p *Proxy) StateGetAllocation(in0 context.Context, in1 address.Address, in2 verifreg.AllocationId, in3 types.TipSetKey) (out0 *verifreg.Allocation, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetAllocation %v", err)
+		return
+	}
+	return cli.StateGetAllocation(in0, in1, in2, in3)
+}
+
+func (p *Proxy) StateGetAllocationForPendingDeal(in0 context.Context, in1 abi.DealID, in2 types.TipSetKey) (out0 *verifreg.Allocation, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetAllocationForPendingDeal %v", err)
+		return
+	}
+	return cli.StateGetAllocationForPendingDeal(in0, in1, in2)
+}
+
+func (p *Proxy) StateGetAllocations(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 map[verifreg.AllocationId]verifreg.Allocation, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetAllocations %v", err)
+		return
+	}
+	return cli.StateGetAllocations(in0, in1, in2)
+}
+
+func (p *Proxy) StateGetBeaconEntry(in0 context.Context, in1 abi.ChainEpoch) (out0 *types.BeaconEntry, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetBeaconEntry %v", err)
+		return
+	}
+	return cli.StateGetBeaconEntry(in0, in1)
+}
+
+func (p *Proxy) StateGetClaim(in0 context.Context, in1 address.Address, in2 verifreg.ClaimId, in3 types.TipSetKey) (out0 *verifreg.Claim, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetClaim %v", err)
+		return
+	}
+	return cli.StateGetClaim(in0, in1, in2, in3)
+}
+
+func (p *Proxy) StateGetClaims(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 map[verifreg.ClaimId]verifreg.Claim, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetClaims %v", err)
+		return
+	}
+	return cli.StateGetClaims(in0, in1, in2)
+}
+
+func (p *Proxy) StateGetNetworkParams(in0 context.Context) (out0 *api1.NetworkParams, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateGetNetworkParams %v", err)
+		return
+	}
+	return cli.StateGetNetworkParams(in0)
 }
 
 func (p *Proxy) StateGetRandomnessFromBeacon(in0 context.Context, in1 crypto.DomainSeparationTag, in2 abi.ChainEpoch, in3 []uint8, in4 types.TipSetKey) (out0 abi.Randomness, err error) {
@@ -472,6 +545,15 @@ func (p *Proxy) StateLookupID(in0 context.Context, in1 address.Address, in2 type
 	return cli.StateLookupID(in0, in1, in2)
 }
 
+func (p *Proxy) StateLookupRobustAddress(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 address.Address, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateLookupRobustAddress %v", err)
+		return
+	}
+	return cli.StateLookupRobustAddress(in0, in1, in2)
+}
+
 func (p *Proxy) StateMarketBalance(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 api1.MarketBalance, err error) {
 	cli, err := p.Select()
 	if err != nil {
@@ -515,6 +597,15 @@ func (p *Proxy) StateMinerActiveSectors(in0 context.Context, in1 address.Address
 		return
 	}
 	return cli.StateMinerActiveSectors(in0, in1, in2)
+}
+
+func (p *Proxy) StateMinerAllocated(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 *bitfield.BitField, err error) {
+	cli, err := p.Select()
+	if err != nil {
+		err = fmt.Errorf("api StateMinerAllocated %v", err)
+		return
+	}
+	return cli.StateMinerAllocated(in0, in1, in2)
 }
 
 func (p *Proxy) StateMinerAvailableBalance(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 big.Int, err error) {
@@ -670,7 +761,7 @@ func (p *Proxy) StateSearchMsg(in0 context.Context, in1 types.TipSetKey, in2 cid
 	return cli.StateSearchMsg(in0, in1, in2, in3, in4)
 }
 
-func (p *Proxy) StateSectorExpiration(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *lminer.SectorExpiration, err error) {
+func (p *Proxy) StateSectorExpiration(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner1.SectorExpiration, err error) {
 	cli, err := p.Select()
 	if err != nil {
 		err = fmt.Errorf("api StateSectorExpiration %v", err)
@@ -688,7 +779,7 @@ func (p *Proxy) StateSectorGetInfo(in0 context.Context, in1 address.Address, in2
 	return cli.StateSectorGetInfo(in0, in1, in2, in3)
 }
 
-func (p *Proxy) StateSectorPartition(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *lminer.SectorLocation, err error) {
+func (p *Proxy) StateSectorPartition(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner1.SectorLocation, err error) {
 	cli, err := p.Select()
 	if err != nil {
 		err = fmt.Errorf("api StateSectorPartition %v", err)
@@ -697,7 +788,7 @@ func (p *Proxy) StateSectorPartition(in0 context.Context, in1 address.Address, i
 	return cli.StateSectorPartition(in0, in1, in2, in3)
 }
 
-func (p *Proxy) StateSectorPreCommitInfo(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 miner.SectorPreCommitOnChainInfo, err error) {
+func (p *Proxy) StateSectorPreCommitInfo(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner.SectorPreCommitOnChainInfo, err error) {
 	cli, err := p.Select()
 	if err != nil {
 		err = fmt.Errorf("api StateSectorPreCommitInfo %v", err)
@@ -749,24 +840,6 @@ func (p *Proxy) StateWaitMsg(in0 context.Context, in1 cid.Cid, in2 uint64, in3 a
 		return
 	}
 	return cli.StateWaitMsg(in0, in1, in2, in3, in4)
-}
-
-func (p *Proxy) StateGetNetworkParams(in0 context.Context) (out0 *api1.NetworkParams, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api StateGetNetworkParams %v", err)
-		return
-	}
-	return cli.StateGetNetworkParams(in0)
-}
-
-func (p *Proxy) StateActorCodeCIDs(in0 context.Context, in2 network.Version) (out0 map[string]cid.Cid, err error) {
-	cli, err := p.Select()
-	if err != nil {
-		err = fmt.Errorf("api StateActorCodeCIDs %v", err)
-		return
-	}
-	return cli.StateActorCodeCIDs(in0, in2)
 }
 
 func (p *Proxy) SyncState(in0 context.Context) (out0 *api1.SyncState, err error) {

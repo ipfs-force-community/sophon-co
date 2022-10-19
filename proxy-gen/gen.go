@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"go/build"
-	"go/format"
 	"reflect"
 	"strings"
+
+	"golang.org/x/tools/imports"
 )
 
 var errType = reflect.TypeOf((*error)(nil)).Elem()
@@ -21,7 +22,8 @@ func Gen(pkgName, structName string, api interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	gen.write(&buf)
 
-	return format.Source(buf.Bytes())
+	// return format.Source(buf.Bytes())
+	return imports.Process("", buf.Bytes(), nil)
 }
 
 type api struct {

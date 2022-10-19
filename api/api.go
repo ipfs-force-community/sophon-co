@@ -12,15 +12,16 @@ import (
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -30,9 +31,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
-	libnetwork "github.com/libp2p/go-libp2p-core/network"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	metrics "github.com/libp2p/go-libp2p/core/metrics"
+	libnetwork "github.com/libp2p/go-libp2p/core/network"
+	protocol "github.com/libp2p/go-libp2p/core/protocol"
 )
 
 var _ api.FullNode = combined(nil)
@@ -149,9 +150,22 @@ type Proxy interface {
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
 	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error) //perm:read
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) //perm:read
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error) //perm:read
+	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+	// pending allocation is not found.
+	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocation returns the allocation for a given address and allocation ID.
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocations returns the all the allocations for a given client.
+	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	// StateGetClaim returns the claim for a given address and claim ID.
+	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) //perm:read
+	// StateGetClaims returns the all the claims for a given provider.
+	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
+	// StateComputeDataCID computes DataCID from a set of on-chain deals
+	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
@@ -253,6 +267,9 @@ type Proxy interface {
 	// This is the value reported by the runtime interface to actors code.
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error) //perm:read
 
+	// StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+	StateMinerAllocated(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error) //perm:read
+
 	// StateVerifierStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
 	// address.
@@ -272,6 +289,9 @@ type Proxy interface {
 
 	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 	StateActorCodeCIDs(context.Context, network.Version) (map[string]cid.Cid, error) //perm:read
+
+	// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error) //perm:read
 
 	// MethodGroup: Wallet
 
@@ -822,4 +842,9 @@ type UnSupport interface {
 	MsigCancel(ctx context.Context, a address.Address, u uint64, a2 address.Address) (*api.MessagePrototype, error)
 
 	MsigCancelTxnHash(ctx context.Context, a address.Address, u uint64, a2 address.Address, bigInt types.BigInt, a3 address.Address, u2 uint64, bytes []byte) (*api.MessagePrototype, error)
+
+	// v1.18.0
+	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
+	// are using the splitstore
+	ChainPrune(ctx context.Context, opts api.PruneOpts) error //perm:admin
 }
