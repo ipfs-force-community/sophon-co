@@ -73,23 +73,25 @@ func (c *Coordinator) Stop() error {
 	c.tspub.Shutdown()
 	return nil
 }
+
 func (c *Coordinator) delNodeAddr(addr string) {
 	c.sel.delPriors(addr)
 }
+
 func (c *Coordinator) handleCandidate(hc *headCandidate) {
 	addr := hc.node.info.Addr
 	clog := log.With("node", addr, "h", hc.ts.Height(), "w", hc.weight, "drift", time.Now().Unix()-int64(hc.ts.MinTimestamp()))
 
 	c.headMu.Lock()
 	defer c.headMu.Unlock()
-	//1. more weight
-	//2. if equal weight. select more blocks
+	// 1. more weight
+	// 2. if equal weight. select more blocks
 	if c.head == nil || hc.weight.GreaterThan(c.weight) || (hc.weight.Equals(c.weight) && len(hc.ts.Blocks()) > len(c.head.Blocks())) {
 		clog.Info("head replaced")
 
 		prev := c.head
 		next := hc.ts
-		headChanges, err := c.applyTipSetChange(prev, next, hc.node) //todo if network become slow
+		headChanges, err := c.applyTipSetChange(prev, next, hc.node) // todo if network become slow
 		if err != nil {
 			clog.Errorf("apply tipset change: %s", err)
 		}

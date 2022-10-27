@@ -2,6 +2,7 @@ package dep
 
 import (
 	"context"
+
 	"github.com/dtynn/dix"
 	metricsi "github.com/ipfs/go-metrics-interface"
 

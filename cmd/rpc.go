@@ -34,7 +34,7 @@ func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, 
 		remoteJwtCli, _ = jwtclient.NewAuthClient(authEndpoint)
 	}
 
-	//register hander to verify token in venus-auth
+	// register hander to verify token in venus-auth
 	var handler, handler2 http.Handler
 	if remoteJwtCli != nil {
 		handler = (http.Handler)(jwtclient.NewAuthMux(jwt, jwtclient.WarpIJwtAuthClient(remoteJwtCli), rpcServer))
