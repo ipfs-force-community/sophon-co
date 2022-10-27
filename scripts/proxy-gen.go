@@ -45,7 +45,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := ioutil.WriteFile(t.outPath, code, 0644); err != nil {
+		if err := ioutil.WriteFile(t.outPath, code, 0o644); err != nil {
 			fmt.Println("ERR:", err)
 			os.Exit(1)
 		}

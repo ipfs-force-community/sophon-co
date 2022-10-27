@@ -71,7 +71,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile("./token", token, 0666)
+		err = ioutil.WriteFile("./token", token, 0o666)
 
 		if err != nil {
 			return err
@@ -91,14 +91,13 @@ var runCmd = &cli.Command{
 
 		defer stop(context.Background()) // nolint:errcheck
 
-		var mCnf = &metrics.TraceConfig{}
-		var proxy, sampler, serverName = strings.TrimSpace(cctx.String("jaeger-proxy")),
+		mCnf := &metrics.TraceConfig{}
+		proxy, sampler, serverName := strings.TrimSpace(cctx.String("jaeger-proxy")),
 			cctx.Float64("trace-sampler"),
 			strings.TrimSpace(cctx.String("trace-node-name"))
 
 		if mCnf.JaegerTracingEnabled = len(proxy) != 0; mCnf.JaegerTracingEnabled {
-			mCnf.ProbabilitySampler, mCnf.JaegerEndpoint, mCnf.ServerName =
-				sampler, proxy, serverName
+			mCnf.ProbabilitySampler, mCnf.JaegerEndpoint, mCnf.ServerName = sampler, proxy, serverName
 		}
 
 		return serveRPC(

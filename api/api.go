@@ -47,7 +47,6 @@ type combined interface {
 // Proxy is a subset of api.FullNode.
 // Requests involved will be proxied to the choosen remote node
 type Proxy interface {
-
 	// ChainReadObj reads ipld nodes referenced by the specified CID from chain
 	// blockstore and returns raw bytes.
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error) //perm:read
@@ -366,7 +365,7 @@ type Proxy interface {
 	// SyncState returns the current status of the lotus sync system.
 	SyncState(context.Context) (*api.SyncState, error) //perm:read
 
-	//venus specify
+	// venus specify
 	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*api.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*api.EstimateResult, error) //perm:read
 
 	MpoolSelects(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error) //perm:read
@@ -402,7 +401,6 @@ type Local interface {
 // UnSupport is a subset of api.FullNode
 // Requests will be rejected
 type UnSupport interface {
-
 	// MethodGroup: Auth
 
 	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:read
@@ -639,7 +637,7 @@ type UnSupport interface {
 	// ClientListImports lists imported files and their root CIDs
 	ClientListImports(ctx context.Context) ([]api.Import, error)
 
-	//ClientListAsks() []Ask
+	// ClientListAsks() []Ask
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
@@ -715,9 +713,9 @@ type UnSupport interface {
 	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
 	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error) //perm:read
 
-	//MsigGetPending returns pending transactions for the given multisig
-	//wallet. Once pending transactions are fully approved, they will no longer
-	//appear here.
+	// MsigGetPending returns pending transactions for the given multisig
+	// wallet. Once pending transactions are fully approved, they will no longer
+	// appear here.
 	MsigGetPending(context.Context, address.Address, types.TipSetKey) ([]*api.MsigTransaction, error) //perm:read
 
 	// MsigCreate creates a multisig wallet
@@ -832,7 +830,7 @@ type UnSupport interface {
 
 	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)
 
-	//v1.14.0
+	// v1.14.0
 	ClientRetrieve(ctx context.Context, params api.RetrievalOrder) (*api.RestrievalRes, error)
 
 	ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error
