@@ -109,10 +109,13 @@ func buildCoordinator(lc fx.Lifecycle, ctx *co.Ctx, connector *co.Connector, inf
 		return nil, err
 	}
 
+	nodeProvider := co.NewNodeProvider()
+	nodeProvider.AddNodes(nodes)
+
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go coordinator.Start()
-			sel.ReplaceNodes(nodes, nil, false)
+			sel.SetNodeProvider(nodeProvider)
 			return nil
 		},
 		OnStop: func(context.Context) error {

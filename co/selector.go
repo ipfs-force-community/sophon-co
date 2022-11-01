@@ -15,22 +15,18 @@ const (
 
 	// ErrWeight means the node respond with error
 	// it will never be selected unless it's the only nodes that available
-	ErrWeight = 0
+	ErrWeight = 1
 
 	// BlockWeight means the node is blocked manually
 	// it will never be selected unless it's recover manually
-	BlockWeight = -1
+	BlockWeight = 0
 )
 
 // NewSelector constructs a Selector instance
 func NewSelector() (*Selector, error) {
 	sel := &Selector{}
 	sel.weight = make(map[string]int)
-	sel.all.addrs = make([]string, 0, 64)
-	sel.all.nodes = map[string]*Node{}
-
 	sel.selectALG = SWRRA()
-
 	return sel, nil
 }
 
@@ -41,55 +37,31 @@ type Selector struct {
 
 	selectALG func(map[string]int) (string, error)
 
-	all struct {
-		sync.RWMutex
-		addrs []string
-		nodes map[string]*Node
-	}
+	nodeProvider INodeProvider
 }
 
-// ReplaceNodes adds and removes nodes
-func (s *Selector) ReplaceNodes(add []*Node, removes map[string]bool, removesAll bool) {
-	s.all.Lock()
-
-	// reset
-	if removesAll || len(removes) > 0 {
-		s.all.addrs = s.all.addrs[:0]
-		for host := range s.all.nodes {
-			if removesAll || removes[host] {
-				s.all.nodes[host].Stop() // nolint:errcheck
-				delete(s.all.nodes, host)
-				continue
+func (s *Selector) SetNodeProvider(provider INodeProvider) {
+	s.nodeProvider = provider
+	provider.AddHook(func(add map[string]bool) {
+		s.lk.Lock()
+		defer s.lk.Unlock()
+		for addr, alter := range add {
+			if alter == ADD {
+				if _, ok := s.weight[addr]; !ok {
+					s.weight[addr] = DefaultWeight
+				}
+			} else {
+				delete(s.weight, addr)
 			}
-
-			s.all.addrs = append(s.all.addrs, host)
 		}
-	}
+	})
 
-	for i := range add {
-		current := add[i]
-		if prev, has := s.all.nodes[current.info.Addr]; has {
-			prev.Stop() // nolint:errcheck
-		} else {
-			s.all.addrs = append(s.all.addrs, current.info.Addr)
-		}
-
-		s.all.nodes[current.info.Addr] = current
-		go current.Start()
-	}
-	s.all.Unlock()
-
+	initNodes := provider.GetHosts()
 	s.lk.Lock()
-	newWeight := make(map[string]int, len(s.weight))
-	for addr, _ := range s.all.nodes {
-		if w, ok := s.weight[addr]; ok {
-			newWeight[addr] = w
-		} else {
-			newWeight[addr] = DefaultWeight
-		}
+	defer s.lk.Unlock()
+	for _, node := range initNodes {
+		s.weight[node] = DefaultWeight
 	}
-	s.weight = newWeight
-	s.lk.Unlock()
 }
 
 func (s *Selector) getPriority(adds string) int {
@@ -102,23 +74,21 @@ func (s *Selector) setPriority(addr string, priority int) {
 	s.lk.Lock()
 	defer s.lk.Unlock()
 
-	if priority < -1 {
-		priority = -1
+	if priority < BlockWeight {
+		priority = BlockWeight
 	} else if priority > MaxValidWeight {
 		priority = MaxValidWeight
 	}
 
-	s.lk.Lock()
 	w := s.weight[addr]
 	before := w
 	w = priority
 
 	s.weight[addr] = w
 	log.Warnf("change priority of %s from %d to %d", addr, before, w)
-	s.lk.Unlock()
 }
 
-func (s *Selector) ListWeight() map[string]int {
+func (s *Selector) ListPriority() map[string]int {
 	s.lk.RLock()
 	defer s.lk.RUnlock()
 	newWeight := make(map[string]int, len(s.weight))
@@ -130,11 +100,13 @@ func (s *Selector) ListWeight() map[string]int {
 
 // Select tries to choose a node from the candidates
 func (s *Selector) Select() (*Node, error) {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+
 	blockQue := make([]string, 0)
 	errQue := make([]string, 0)
 	normalQue := make(map[string]int)
 
-	s.lk.Lock()
 	for addr, w := range s.weight {
 		if w <= BlockWeight {
 			blockQue = append(blockQue, addr)
@@ -154,7 +126,7 @@ func (s *Selector) Select() (*Node, error) {
 		return nil, ErrNoNodeAvailable
 	}
 
-	return s.all.nodes[addr], nil
+	return s.nodeProvider.GetNode(addr), nil
 }
 
 func remove(s []string, r string) []string {
@@ -170,7 +142,10 @@ func remove(s []string, r string) []string {
 // weight should be positive and len of weight shuold greater than 0
 func SWRRA() func(map[string]int) (string, error) {
 	state := make(map[string]int)
+	lk := sync.Mutex{}
 	return func(weight map[string]int) (string, error) {
+		lk.Lock()
+		defer lk.Unlock()
 		// 0. check len of weight
 		if len(weight) == 0 {
 			return "", fmt.Errorf("no key available")

@@ -2,6 +2,7 @@ package co
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -264,4 +265,68 @@ func (n *Node) loadBlockHeader(ctx context.Context, c cid.Cid) (*types.BlockHead
 
 	blk, err := n.upstream.full.ChainGetBlock(ctx, c)
 	return blk, err
+}
+
+type INodeProvider interface {
+	GetNode(host string) *Node
+	GetHosts() []string
+	AddHook(func(alter map[string]bool))
+}
+
+var _ INodeProvider = (*NodeProvider)(nil)
+
+type NodeProvider struct {
+	nodes map[string]*Node
+	lk    sync.RWMutex
+	hooks []func(alter map[string]bool)
+}
+
+func NewNodeProvider() *NodeProvider {
+	return &NodeProvider{
+		nodes: make(map[string]*Node),
+	}
+}
+
+func (p *NodeProvider) GetNode(host string) *Node {
+	p.lk.RLock()
+	defer p.lk.RUnlock()
+	return p.nodes[host]
+}
+
+func (p *NodeProvider) GetHosts() []string {
+	p.lk.RLock()
+	defer p.lk.RUnlock()
+	hosts := make([]string, 0, len(p.nodes))
+	for host := range p.nodes {
+		hosts = append(hosts, host)
+	}
+	return hosts
+}
+
+func (p *NodeProvider) AddHook(hook func(alter map[string]bool)) {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+	p.hooks = append(p.hooks, hook)
+}
+
+func (p *NodeProvider) AddNodes(add []*Node) {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+	alt := make(map[string]bool)
+	for _, node := range add {
+		if _, exist := p.nodes[node.info.Addr]; !exist {
+			p.nodes[node.info.Addr] = node
+		} else {
+			pre := p.nodes[node.info.Addr]
+			pre.Stop()
+			p.nodes[node.info.Addr] = node
+
+			alt[node.info.Addr] = ADD
+		}
+		go node.Start()
+	}
+
+	for _, hook := range p.hooks {
+		hook(alt)
+	}
 }
