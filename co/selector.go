@@ -1,26 +1,45 @@
 package co
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
+)
+
+const (
+	// MaxWeight is the default max weight of a node
+	MaxValidWeight = 5
+
+	// DefaultWeight is the default weight of a node
+	DefaultWeight = 2
+
+	// ErrWeight means the node respond with error
+	// it will never be selected unless it's the only nodes that available
+	ErrWeight = 0
+
+	// BlockWeight means the node is blocked manually
+	// it will never be selected unless it's recover manually
+	BlockWeight = -1
 )
 
 // NewSelector constructs a Selector instance
 func NewSelector() (*Selector, error) {
 	sel := &Selector{}
-	sel.prior.addrs = make([]string, 0, 64)
+	sel.weight = make(map[string]int)
 	sel.all.addrs = make([]string, 0, 64)
 	sel.all.nodes = map[string]*Node{}
+
+	sel.selectALG = SWRRA()
 
 	return sel, nil
 }
 
 // Selector is used to select a best chain node to route the requests to
 type Selector struct {
-	prior struct {
-		sync.RWMutex
-		addrs []string
-	}
+	lk     sync.RWMutex
+	weight map[string]int
+
+	selectALG func(map[string]int) (string, error)
 
 	all struct {
 		sync.RWMutex
@@ -58,55 +77,84 @@ func (s *Selector) ReplaceNodes(add []*Node, removes map[string]bool, removesAll
 		s.all.nodes[current.info.Addr] = current
 		go current.Start()
 	}
-
 	s.all.Unlock()
+
+	s.lk.Lock()
+	newWeight := make(map[string]int, len(s.weight))
+	for addr, _ := range s.all.nodes {
+		if w, ok := s.weight[addr]; ok {
+			newWeight[addr] = w
+		} else {
+			newWeight[addr] = DefaultWeight
+		}
+	}
+	s.weight = newWeight
+	s.lk.Unlock()
 }
 
-func (s *Selector) setPriors(addrs ...string) {
-	s.prior.Lock()
-	s.prior.addrs = append(s.prior.addrs[:0], addrs...)
-	s.prior.Unlock()
+func (s *Selector) getPriority(adds string) int {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	return s.weight[adds]
 }
 
-func (s *Selector) delPriors(addr string) {
-	s.prior.Lock()
-	log.Warnf("remove address %s", addr)
-	s.prior.addrs = remove(s.prior.addrs, addr)
-	s.prior.Unlock()
+func (s *Selector) setPriority(addr string, priority int) {
+	s.lk.Lock()
+	defer s.lk.Unlock()
+
+	if priority < -1 {
+		priority = -1
+	} else if priority > MaxValidWeight {
+		priority = MaxValidWeight
+	}
+
+	s.lk.Lock()
+	w := s.weight[addr]
+	before := w
+	w = priority
+
+	s.weight[addr] = w
+	log.Warnf("change priority of %s from %d to %d", addr, before, w)
+	s.lk.Unlock()
+}
+
+func (s *Selector) ListWeight() map[string]int {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	newWeight := make(map[string]int, len(s.weight))
+	for addr, w := range s.weight {
+		newWeight[addr] = w
+	}
+	return newWeight
 }
 
 // Select tries to choose a node from the candidates
 func (s *Selector) Select() (*Node, error) {
-	var addr string
+	blockQue := make([]string, 0)
+	errQue := make([]string, 0)
+	normalQue := make(map[string]int)
 
-	s.prior.RLock()
-	psize := len(s.prior.addrs)
-	switch psize {
-	case 0:
-
-	case 1:
-		addr = s.prior.addrs[0]
-
-	default:
-		addr = s.prior.addrs[rand.Intn(psize)]
-	}
-	s.prior.RUnlock()
-
-	s.all.RLock()
-	defer s.all.RUnlock()
-
-	if addr != "" {
-		if node, ok := s.all.nodes[addr]; ok {
-			return node, nil
+	s.lk.Lock()
+	for addr, w := range s.weight {
+		if w <= BlockWeight {
+			blockQue = append(blockQue, addr)
+		} else if w == ErrWeight {
+			errQue = append(errQue, addr)
+		} else {
+			normalQue[addr] = w
 		}
 	}
 
-	allSize := len(s.all.addrs)
-	if allSize == 0 {
+	var addr string
+	if len(normalQue) > 0 {
+		addr, _ = s.selectALG(normalQue)
+	} else if len(errQue) > 0 {
+		addr = errQue[rand.Intn(len(errQue))]
+	} else {
 		return nil, ErrNoNodeAvailable
 	}
 
-	return s.all.nodes[s.all.addrs[rand.Intn(allSize)]], nil
+	return s.all.nodes[addr], nil
 }
 
 func remove(s []string, r string) []string {
@@ -117,3 +165,52 @@ func remove(s []string, r string) []string {
 	}
 	return s
 }
+
+// Smooth Weight Round Robin Algorithm
+// weight should be positive and len of weight shuold greater than 0
+func SWRRA() func(map[string]int) (string, error) {
+	state := make(map[string]int)
+	return func(weight map[string]int) (string, error) {
+		// 0. check len of weight
+		if len(weight) == 0 {
+			return "", fmt.Errorf("no key available")
+		}
+		for {
+			// 1. calc state
+			for k, w := range weight {
+				s, exist := state[k]
+				if !exist {
+					state[k] = 0
+				}
+				state[k] = s + int(w)
+			}
+
+			// 2. select biggest state of weight
+			maxState := 0
+			maxKey := ""
+			for k, s := range state {
+				if s > maxState {
+					maxState = s
+					maxKey = k
+				}
+			}
+
+			// 3. deduct total weight
+			totalWeight := 0
+			for _, w := range weight {
+				totalWeight += int(w)
+			}
+			state[maxKey] -= int(totalWeight)
+
+			// 4. check if maxKey is available
+			if _, exist := weight[maxKey]; exist {
+				return maxKey, nil
+			}
+		}
+	}
+}
+
+const (
+	ADD    = true
+	REMOVE = false
+)
