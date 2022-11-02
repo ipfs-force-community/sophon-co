@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/ipfs-force-community/chain-co/api"
-	"github.com/ipfs-force-community/chain-co/proxy-gen"
+	"github.com/ipfs-force-community/chain-co/gen/node-proxy/gen"
 )
 
 func main() {

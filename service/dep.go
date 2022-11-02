@@ -9,6 +9,7 @@ import (
 	"github.com/dtynn/dix"
 	"go.uber.org/fx"
 
+	local_api "github.com/ipfs-force-community/chain-co/cli/api"
 	"github.com/ipfs-force-community/chain-co/co"
 	"github.com/ipfs-force-community/chain-co/proxy"
 
@@ -17,6 +18,7 @@ import (
 )
 
 const extractFullNodeAPIKey dix.Invoke = 1
+const extractLocalAPIKey dix.Invoke = 2
 
 // Build constructs the app with given di options
 func Build(ctx context.Context, overrides ...dix.Option) (dix.StopFunc, error) {
@@ -38,6 +40,14 @@ func Build(ctx context.Context, overrides ...dix.Option) (dix.StopFunc, error) {
 func FullNode(full *api.FullNode) dix.Option {
 	return dix.Override(extractFullNodeAPIKey, func(srv Service) error {
 		*full = &srv
+		return nil
+	})
+}
+
+// FullNode extracts api.FullNode from inside di
+func LocalAPI(api *local_api.LocalAPI) dix.Option {
+	return dix.Override(extractLocalAPIKey, func(srv LocalAPIService) error {
+		*api = &srv
 		return nil
 	})
 }
