@@ -162,7 +162,12 @@ func buildProxyAPI(sel *co.Selector) *proxy.Proxy {
 			if err != nil {
 				return nil, err
 			}
-
+			host, err := node.Host()
+			if err != nil {
+				log.Warnf("failed to get host: %s", err)
+			} else {
+				log.Infof("select node %s", host)
+			}
 			return node.FullNode(), nil
 		},
 	}
