@@ -2,39 +2,45 @@ package co
 
 import (
 	"fmt"
-	"math/rand"
 	"sync"
 )
 
+type Priority int
+
 const (
 	// MaxWeight is the default max weight of a node
-	MaxValidWeight = 5
+	MaxValidWeight = 10
 
 	// DefaultWeight is the default weight of a node
-	DefaultWeight = 2
-
-	// ErrWeight means the node respond with error
-	// it will never be selected unless it's the only nodes that available
-	ErrWeight = 1
+	DefaultWeight = 1
 
 	// BlockWeight means the node is blocked manually
 	// it will never be selected unless it's recover manually
 	BlockWeight = 0
+)
+const (
+	// ErrPriority means the node once respond with error and will be selected with lowest priority
+	ErrPriority = iota
+	// DelayPriority means the node is behind the latest head
+	DelayPriority
+	// CatchUpPriority means the node have catch up the latest head, they will be selected with highest priority
+	CatchUpPriority
 )
 
 // NewSelector constructs a Selector instance
 func NewSelector() (*Selector, error) {
 	sel := &Selector{}
 	sel.weight = make(map[string]int)
+	sel.priority = make(map[string]int)
 	sel.selectALG = SWRRA()
 	return sel, nil
 }
 
 // Selector is used to select a best chain node to route the requests to
 type Selector struct {
-	lk     sync.RWMutex
-	weight map[string]int
-
+	lk        sync.RWMutex
+	weight    map[string]int
+	priority  map[string]int
 	selectALG func(map[string]int) (string, error)
 
 	nodeProvider INodeProvider
@@ -49,9 +55,11 @@ func (s *Selector) SetNodeProvider(provider INodeProvider) {
 			if alter == ADD {
 				if _, ok := s.weight[addr]; !ok {
 					s.weight[addr] = DefaultWeight
+					s.priority[addr] = DelayPriority
 				}
 			} else {
 				delete(s.weight, addr)
+				delete(s.priority, addr)
 			}
 		}
 	})
@@ -61,34 +69,81 @@ func (s *Selector) SetNodeProvider(provider INodeProvider) {
 	defer s.lk.Unlock()
 	for _, node := range initNodes {
 		s.weight[node] = DefaultWeight
+		s.priority[node] = DelayPriority
 	}
 }
 
 func (s *Selector) getPriority(adds string) int {
 	s.lk.RLock()
 	defer s.lk.RUnlock()
-	return s.weight[adds]
+	return s.priority[adds]
 }
 
-func (s *Selector) setPriority(addr string, priority int) {
+func (s *Selector) getAddrOfPriority(priority int) []string {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	ret := make([]string, 0)
+	for addr, p := range s.priority {
+		if p == priority {
+			ret = append(ret, addr)
+		}
+	}
+	return ret
+}
+
+func (s *Selector) setPriority(priority int, addrs ...string) {
 	s.lk.Lock()
 	defer s.lk.Unlock()
 
-	if priority < BlockWeight {
-		priority = BlockWeight
-	} else if priority > MaxValidWeight {
-		priority = MaxValidWeight
+	if priority < ErrPriority {
+		priority = ErrPriority
+	} else if priority > CatchUpPriority {
+		priority = CatchUpPriority
 	}
 
-	w := s.weight[addr]
-	before := w
-	w = priority
+	for _, addr := range addrs {
+		w := s.priority[addr]
+		before := w
+		w = priority
 
-	s.weight[addr] = w
-	log.Warnf("change priority of %s from %d to %d", addr, before, w)
+		s.priority[addr] = w
+		log.Warnf("change priority of %s from %d to %d", addr, before, w)
+	}
 }
 
 func (s *Selector) ListPriority() map[string]int {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	ret := make(map[string]int)
+	for addr, p := range s.priority {
+		ret[addr] = p
+	}
+	return ret
+}
+
+func (s *Selector) SetWeight(addr string, weight int) error {
+	s.lk.Lock()
+	defer s.lk.Unlock()
+
+	if weight < BlockWeight {
+		return fmt.Errorf("priority must be greater than %d", BlockWeight)
+	} else if weight > MaxValidWeight {
+		return fmt.Errorf("priority must be less than %d", MaxValidWeight)
+	}
+
+	w, ok := s.weight[addr]
+	if !ok {
+		return fmt.Errorf("node %s not found", addr)
+	}
+	before := w
+	w = weight
+
+	s.weight[addr] = w
+	log.Warnf("change priority of %s from %d to %d", addr, before, w)
+	return nil
+}
+
+func (s *Selector) ListWeight() map[string]int {
 	s.lk.RLock()
 	defer s.lk.RUnlock()
 	newWeight := make(map[string]int, len(s.weight))
@@ -103,26 +158,32 @@ func (s *Selector) Select() (*Node, error) {
 	s.lk.RLock()
 	defer s.lk.RUnlock()
 
-	blockQue := make([]string, 0)
-	errQue := make([]string, 0)
-	normalQue := make(map[string]int)
+	errQue := make(map[string]int)
+	delayQue := make(map[string]int)
+	catchUpQue := make(map[string]int)
 
-	for addr, w := range s.weight {
-		if w <= BlockWeight {
-			blockQue = append(blockQue, addr)
-		} else if w == ErrWeight {
-			errQue = append(errQue, addr)
+	for addr, p := range s.priority {
+		if p == CatchUpPriority {
+			catchUpQue[addr] = s.weight[addr]
+		} else if p == DelayPriority {
+			delayQue[addr] = s.weight[addr]
 		} else {
-			normalQue[addr] = w
+			errQue[addr] = s.weight[addr]
 		}
 	}
 
-	var addr string
-	if len(normalQue) > 0 {
-		addr, _ = s.selectALG(normalQue)
-	} else if len(errQue) > 0 {
-		addr = errQue[rand.Intn(len(errQue))]
-	} else {
+	var addr string = ""
+	if len(catchUpQue) > 0 {
+		addr, _ = s.selectALG(catchUpQue)
+	}
+	if addr == "" && len(delayQue) > 0 {
+		addr, _ = s.selectALG(delayQue)
+	}
+	if addr == "" && len(errQue) > 0 {
+		addr, _ = s.selectALG(errQue)
+	}
+
+	if addr == "" {
 		return nil, ErrNoNodeAvailable
 	}
 
@@ -146,13 +207,25 @@ func SWRRA() func(map[string]int) (string, error) {
 	return func(weight map[string]int) (string, error) {
 		lk.Lock()
 		defer lk.Unlock()
-		// 0. check len of weight
+		// check len of weight
 		if len(weight) == 0 {
-			return "", fmt.Errorf("no key available")
+			return "", fmt.Errorf("weight is empty")
 		}
+
+		// 0. exclude the nodes with weight 0
+		selectSet := make(map[string]int, len(weight))
+		for addr, w := range weight {
+			if w > 0 {
+				selectSet[addr] = w
+			}
+		}
+		if len(selectSet) == 0 {
+			return "", fmt.Errorf("no node available")
+		}
+
 		for {
 			// 1. calc state
-			for k, w := range weight {
+			for k, w := range selectSet {
 				s, exist := state[k]
 				if !exist {
 					state[k] = 0
@@ -172,20 +245,15 @@ func SWRRA() func(map[string]int) (string, error) {
 
 			// 3. deduct total weight
 			totalWeight := 0
-			for _, w := range weight {
+			for _, w := range selectSet {
 				totalWeight += int(w)
 			}
 			state[maxKey] -= int(totalWeight)
 
 			// 4. check if maxKey is available
-			if _, exist := weight[maxKey]; exist {
+			if _, exist := selectSet[maxKey]; exist {
 				return maxKey, nil
 			}
 		}
 	}
 }
-
-const (
-	ADD    = true
-	REMOVE = false
-)

@@ -74,13 +74,11 @@ func (c *Coordinator) Stop() error {
 	return nil
 }
 func (c *Coordinator) delNodeAddr(addr string) {
-	c.sel.setPriority(addr, ErrWeight)
+	c.sel.setPriority(ErrPriority, addr)
 }
 func (c *Coordinator) handleCandidate(hc *headCandidate) {
 	addr := hc.node.info.Addr
 	clog := log.With("node", addr, "h", hc.ts.Height(), "w", hc.weight, "drift", time.Now().Unix()-int64(hc.ts.MinTimestamp()))
-
-	c.sel.setPriority(addr, c.sel.getPriority(addr)+1)
 
 	c.headMu.Lock()
 	defer c.headMu.Unlock()
@@ -102,6 +100,11 @@ func (c *Coordinator) handleCandidate(hc *headCandidate) {
 		c.head = hc.ts
 		c.weight = hc.weight
 		c.nodes = append(c.nodes[:0], addr)
+
+		preAddrs := c.sel.getAddrOfPriority(CatchUpPriority)
+		c.sel.setPriority(DelayPriority, preAddrs...)
+		c.sel.setPriority(CatchUpPriority, addr)
+
 		c.tspub.Pub(headChanges, tipsetChangeTopic)
 
 		return
@@ -118,7 +121,7 @@ func (c *Coordinator) handleCandidate(hc *headCandidate) {
 
 		if !contains {
 			c.nodes = append(c.nodes, addr)
-
+			c.sel.setPriority(CatchUpPriority, addr)
 			clog.Infof("another node %s caught up", addr)
 		}
 		return
