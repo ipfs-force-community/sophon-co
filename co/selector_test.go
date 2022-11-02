@@ -80,7 +80,7 @@ func Test_Selector_SetWeight(t *testing.T) {
 	sel.SetNodeProvider(nodeProvider)
 
 	// test setPriority
-	sel.SetWeight("a", 3)
+	sel.SetWeight("a", 3) // nolint:errcheck
 	weight := sel.ListWeight()
 	assert.Equal(t, 3, weight["a"])
 	t.Log(weight)
@@ -114,9 +114,9 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	sel.SetNodeProvider(nodeProvider)
 
 	// test setPriority blockWeight
-	sel.SetWeight("a", BlockWeight)
-	sel.SetWeight("c", BlockWeight)
-	sel.SetWeight("b", DefaultWeight)
+	sel.SetWeight("a", BlockWeight)   // nolint:errcheck
+	sel.SetWeight("c", BlockWeight)   // nolint:errcheck
+	sel.SetWeight("b", DefaultWeight) // nolint:errcheck
 	weights := sel.ListWeight()
 	assert.Equal(t, BlockWeight, weights["a"])
 	assert.Equal(t, BlockWeight, weights["c"])
@@ -134,9 +134,9 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	assert.Equal(t, 0, dict["c"])
 	assert.Equal(t, 3, dict["b"])
 
-	sel.SetWeight("a", BlockWeight)
-	sel.SetWeight("c", BlockWeight)
-	sel.SetWeight("b", BlockWeight)
+	sel.SetWeight("a", BlockWeight) // nolint:errcheck
+	sel.SetWeight("c", BlockWeight) // nolint:errcheck
+	sel.SetWeight("b", BlockWeight) // nolint:errcheck
 	_, err := sel.Select()
 	assert.Error(t, err)
 	assert.Equal(t, ErrNoNodeAvailable, err)
@@ -257,7 +257,7 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	assert.Equal(t, 4, dict["a"])
 
 	// wa 0
-	sel.SetWeight("a", BlockWeight)
+	sel.SetWeight("a", BlockWeight) // nolint:errcheck
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
 		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
@@ -270,8 +270,8 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	assert.Equal(t, 4, dict["b"])
 
 	// wa 0 wb 0
-	sel.SetWeight("a", BlockWeight)
-	sel.SetWeight("b", BlockWeight)
+	sel.SetWeight("a", BlockWeight) // nolint:errcheck
+	sel.SetWeight("b", BlockWeight) // nolint:errcheck
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
 		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
@@ -284,9 +284,9 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	assert.Equal(t, 4, dict["c"])
 
 	// wa 0 wb 0 wc 0
-	sel.SetWeight("a", BlockWeight)
-	sel.SetWeight("b", BlockWeight)
-	sel.SetWeight("c", BlockWeight)
+	sel.SetWeight("a", BlockWeight) // nolint:errcheck
+	sel.SetWeight("b", BlockWeight) // nolint:errcheck
+	sel.SetWeight("c", BlockWeight) // nolint:errcheck
 	_, err := sel.Select()
 	assert.Equal(t, ErrNoNodeAvailable, err)
 }

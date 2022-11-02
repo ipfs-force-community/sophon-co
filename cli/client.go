@@ -36,18 +36,3 @@ func NewLocalRPCClient(ctx context.Context, addr string, opts ...jsonrpc.Option)
 
 	return &res, closer, err
 }
-
-func testrpc(token string, endpoint string) (local_api.LocalAPI, jsonrpc.ClientCloser, error) {
-	headers := http.Header{}
-	headers.Add("Authorization", "Bearer "+token)
-	ctx := context.Background()
-
-	var res local_api.LocalAPIStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, "Filecoin",
-		[]interface{}{
-			&res,
-		},
-		headers,
-	)
-	return &res, closer, err
-}

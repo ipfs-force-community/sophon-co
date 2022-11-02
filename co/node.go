@@ -327,7 +327,7 @@ func (p *NodeProvider) AddNodes(add []*Node) {
 			p.nodes[node.info.Addr] = node
 		} else {
 			pre := p.nodes[node.info.Addr]
-			pre.Stop()
+			pre.Stop() // nolint:errcheck
 			p.nodes[node.info.Addr] = node
 
 			alt[node.info.Addr] = ADD

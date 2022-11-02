@@ -52,7 +52,7 @@ func (s *Selector) SetNodeProvider(provider INodeProvider) {
 		s.lk.Lock()
 		defer s.lk.Unlock()
 		for addr, alter := range add {
-			if alter == ADD {
+			if alter == ADD { // nolint:gosimple
 				if _, ok := s.weight[addr]; !ok {
 					s.weight[addr] = DefaultWeight
 					s.priority[addr] = DelayPriority
@@ -71,12 +71,6 @@ func (s *Selector) SetNodeProvider(provider INodeProvider) {
 		s.weight[node] = DefaultWeight
 		s.priority[node] = DelayPriority
 	}
-}
-
-func (s *Selector) getPriority(adds string) int {
-	s.lk.RLock()
-	defer s.lk.RUnlock()
-	return s.priority[adds]
 }
 
 func (s *Selector) getAddrOfPriority(priority int) []string {
@@ -188,15 +182,6 @@ func (s *Selector) Select() (*Node, error) {
 	}
 
 	return s.nodeProvider.GetNode(addr), nil
-}
-
-func remove(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
-		}
-	}
-	return s
 }
 
 // Smooth Weight Round Robin Algorithm
