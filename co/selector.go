@@ -228,6 +228,8 @@ func SWRRA() func(map[string]int) (string, error) {
 			// 4. check if maxKey is available
 			if _, exist := selectSet[maxKey]; exist {
 				return maxKey, nil
+			} else if state[maxKey] == 0 {
+				delete(state, maxKey)
 			}
 		}
 	}
