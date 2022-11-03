@@ -223,7 +223,7 @@ func SWRRA() func(map[string]int) (string, error) {
 			for _, w := range selectSet {
 				totalWeight += int(w)
 			}
-			state[maxKey] -= int(totalWeight)
+			state[maxKey] -= totalWeight
 
 			// 4. check if maxKey is available
 			if _, exist := selectSet[maxKey]; exist {

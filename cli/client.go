@@ -14,7 +14,7 @@ import (
 
 func NewLocalRPCClient(ctx context.Context, addr string, opts ...jsonrpc.Option) (local_api.LocalAPI, jsonrpc.ClientCloser, error) {
 	port := strings.Split(addr, ":")[1]
-	endpoint := fmt.Sprintf("http://127.0.0.1:%s/rpc/cli/v0", port)
+	endpoint := fmt.Sprintf("http://127.0.0.1:%s/rpc/admin/v0", port)
 
 	token, err := ioutil.ReadFile("./token")
 	token = bytes.TrimSpace(token)

@@ -87,7 +87,7 @@ func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, 
 
 	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: pma}, handler, rpcServer)
 	serveRpc("/rpc/v1", pma, handler2, rpcServer2)
-	serveRpc("/rpc/cli/v0", localApi, handler3, rpcServer3)
+	serveRpc("/rpc/admin/v0", localApi, handler3, rpcServer3)
 
 	server := http.Server{
 		Addr:    listen,
