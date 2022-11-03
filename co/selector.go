@@ -101,7 +101,7 @@ func (s *Selector) setPriority(priority int, addrs ...string) {
 		w = priority
 
 		s.priority[addr] = w
-		log.Warnf("change priority of %s from %d to %d", addr, before, w)
+		log.Debugf("change priority of %s from %d to %d", addr, before, w)
 	}
 }
 
@@ -133,7 +133,7 @@ func (s *Selector) SetWeight(addr string, weight int) error {
 	w = weight
 
 	s.weight[addr] = w
-	log.Warnf("change priority of %s from %d to %d", addr, before, w)
+	log.Debugf("change priority of %s from %d to %d", addr, before, w)
 	return nil
 }
 
