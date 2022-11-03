@@ -26,6 +26,7 @@ func Build(ctx context.Context, overrides ...dix.Option) (dix.StopFunc, error) {
 		dix.Override(new(co.NodeOption), co.DefaultNodeOption),
 		dix.Override(new(*co.Ctx), co.NewCtx),
 		dix.Override(new(*co.Connector), co.NewConnector),
+		dix.Override(new(co.INodeStore), co.NewNodeStore),
 		dix.Override(new(*co.Coordinator), buildCoordinator),
 		dix.Override(new(*co.Selector), co.NewSelector),
 		dix.Override(new(*proxy.Proxy), buildProxyAPI),
@@ -119,13 +120,10 @@ func buildCoordinator(lc fx.Lifecycle, ctx *co.Ctx, connector *co.Connector, inf
 		return nil, err
 	}
 
-	nodeProvider := co.NewNodeProvider()
-	nodeProvider.AddNodes(nodes)
-
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go coordinator.Start()
-			sel.SetNodeProvider(nodeProvider)
+			sel.AddNodes(nodes...)
 			return nil
 		},
 		OnStop: func(context.Context) error {
@@ -162,12 +160,7 @@ func buildProxyAPI(sel *co.Selector) *proxy.Proxy {
 			if err != nil {
 				return nil, err
 			}
-			host, err := node.Host()
-			if err != nil {
-				log.Warnf("failed to get host: %s", err)
-			} else {
-				log.Infof("select node %s", host)
-			}
+			log.Infof("select node %s", node.Addr)
 			return node.FullNode(), nil
 		},
 	}

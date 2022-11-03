@@ -59,4 +59,5 @@ build: $(BUILD_DEPS)
 gen:
 	go run ./gen/perm-proxy
 	goimports -w cli
+	go generate ./...
 .PHONY: gen

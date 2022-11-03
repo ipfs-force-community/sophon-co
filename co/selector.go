@@ -28,11 +28,13 @@ const (
 )
 
 // NewSelector constructs a Selector instance
-func NewSelector() (*Selector, error) {
+func NewSelector(nodes INodeStore) (*Selector, error) {
 	sel := &Selector{}
 	sel.weight = make(map[string]int)
 	sel.priority = make(map[string]int)
 	sel.selectALG = SWRRA()
+	sel.nodeProvider = nodes
+
 	return sel, nil
 }
 
@@ -43,33 +45,21 @@ type Selector struct {
 	priority  map[string]int
 	selectALG func(map[string]int) (string, error)
 
-	nodeProvider INodeProvider
+	nodeProvider INodeStore
 }
 
-func (s *Selector) SetNodeProvider(provider INodeProvider) {
-	s.nodeProvider = provider
-	provider.AddHook(func(add map[string]bool) {
-		s.lk.Lock()
-		defer s.lk.Unlock()
-		for addr, alter := range add {
-			if alter == ADD { // nolint:gosimple
-				if _, ok := s.weight[addr]; !ok {
-					s.weight[addr] = DefaultWeight
-					s.priority[addr] = DelayPriority
-				}
-			} else {
-				delete(s.weight, addr)
-				delete(s.priority, addr)
-			}
-		}
-	})
-
-	initNodes := provider.GetHosts()
+func (s *Selector) AddNodes(nodes ...*Node) {
+	s.nodeProvider.AddNodes(nodes)
 	s.lk.Lock()
 	defer s.lk.Unlock()
-	for _, node := range initNodes {
-		s.weight[node] = DefaultWeight
-		s.priority[node] = DelayPriority
+	for _, node := range nodes {
+		addr := node.Addr
+		if _, ok := s.weight[addr]; !ok {
+			s.weight[addr] = DefaultWeight
+			s.priority[addr] = DelayPriority
+		} else {
+			s.priority[addr] = DelayPriority
+		}
 	}
 }
 

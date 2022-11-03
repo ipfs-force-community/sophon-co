@@ -75,6 +75,7 @@ func (c *Connector) Connect(info NodeInfo, version string) (*Node, error) {
 		info:   info,
 		ctx:    ctx,
 		cancel: cancel,
+		Addr:   addr,
 		sctx:   c.Ctx,
 		log:    log.With("remote", addr),
 	}
@@ -89,6 +90,7 @@ func (c *Connector) Connect(info NodeInfo, version string) (*Node, error) {
 type Node struct {
 	opt  NodeOption
 	info NodeInfo
+	Addr string
 
 	reListenInterval time.Duration
 
@@ -151,10 +153,6 @@ func (n *Node) Stop() error {
 // FullNode returns the client to the upstream node
 func (n *Node) FullNode() v1api.FullNode {
 	return n.upstream.full
-}
-
-func (n *Node) Host() (string, error) {
-	return n.info.Host()
 }
 
 func (n *Node) reListen() (<-chan []*api.HeadChange, error) {
@@ -276,33 +274,33 @@ const (
 	REMOVE = false
 )
 
-type INodeProvider interface {
+//go:generate mockgen -destination=./node_store_mock.go -package=co github.com/ipfs-force-community/chain-co/co INodeStore
+type INodeStore interface {
 	GetNode(host string) *Node
 	GetHosts() []string
-	AddHook(func(alter map[string]bool))
+	AddNodes([]*Node)
 }
 
-var _ INodeProvider = (*NodeProvider)(nil)
+var _ INodeStore = (*NodeStore)(nil)
 
-type NodeProvider struct {
+type NodeStore struct {
 	nodes map[string]*Node
 	lk    sync.RWMutex
-	hooks []func(alter map[string]bool)
 }
 
-func NewNodeProvider() *NodeProvider {
-	return &NodeProvider{
+func NewNodeStore() *NodeStore {
+	return &NodeStore{
 		nodes: make(map[string]*Node),
 	}
 }
 
-func (p *NodeProvider) GetNode(host string) *Node {
+func (p *NodeStore) GetNode(host string) *Node {
 	p.lk.RLock()
 	defer p.lk.RUnlock()
 	return p.nodes[host]
 }
 
-func (p *NodeProvider) GetHosts() []string {
+func (p *NodeStore) GetHosts() []string {
 	p.lk.RLock()
 	defer p.lk.RUnlock()
 	hosts := make([]string, 0, len(p.nodes))
@@ -312,13 +310,7 @@ func (p *NodeProvider) GetHosts() []string {
 	return hosts
 }
 
-func (p *NodeProvider) AddHook(hook func(alter map[string]bool)) {
-	p.lk.Lock()
-	defer p.lk.Unlock()
-	p.hooks = append(p.hooks, hook)
-}
-
-func (p *NodeProvider) AddNodes(add []*Node) {
+func (p *NodeStore) AddNodes(add []*Node) {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 	alt := make(map[string]bool)
@@ -333,9 +325,5 @@ func (p *NodeProvider) AddNodes(add []*Node) {
 			alt[node.info.Addr] = ADD
 		}
 		go node.Start()
-	}
-
-	for _, hook := range p.hooks {
-		hook(alt)
 	}
 }

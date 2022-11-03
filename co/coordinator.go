@@ -59,7 +59,6 @@ func (c *Coordinator) Start() {
 		select {
 		case <-c.ctx.lc.Done():
 			return
-
 		case hc := <-c.ctx.headCh:
 			c.handleCandidate(hc)
 		case addr := <-c.ctx.errNodeCh:

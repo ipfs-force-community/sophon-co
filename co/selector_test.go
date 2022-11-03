@@ -11,13 +11,17 @@ func Test_Selector_Init(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	nodeProvider := NewMockINodeProvider(ctrl)
+	nodeStore := NewMockINodeStore(ctrl)
 
 	// init selector
-	sel, _ := NewSelector()
-	nodeProvider.EXPECT().AddHook(gomock.Any())
-	nodeProvider.EXPECT().GetHosts().Return([]string{"a", "b", "c", "d"})
-	sel.SetNodeProvider(nodeProvider)
+	sel, _ := NewSelector(nodeStore)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+		&Node{Addr: "b"},
+		&Node{Addr: "c"},
+		&Node{Addr: "d"},
+	)
 
 	weight := sel.ListWeight()
 	assert.Equal(t, 4, len(weight))
@@ -36,25 +40,28 @@ func Test_Selector_UpdateNodes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	nodeProvider := NewMockINodeProvider(ctrl)
+	nodeStore := NewMockINodeStore(ctrl)
 
 	// init selector
-	sel, _ := NewSelector()
-	var hook func(map[string]bool)
-	nodeProvider.EXPECT().AddHook(gomock.Any()).Do(func(h func(map[string]bool)) {
-		hook = h
-	})
-	nodeProvider.EXPECT().GetHosts().Return([]string{"a", "b", "c", "d"})
-	sel.SetNodeProvider(nodeProvider)
+	sel, _ := NewSelector(nodeStore)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+		&Node{Addr: "b"},
+		&Node{Addr: "c"},
+	)
 
-	// update nodes
-	hook(map[string]bool{"a": ADD, "b": REMOVE})
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+	)
+
 	assert.Equal(t, 3, len(sel.ListWeight()))
 	assert.Equal(t, 3, len(sel.ListPriority()))
 
 	records := make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -63,21 +70,23 @@ func Test_Selector_UpdateNodes(t *testing.T) {
 	dict := countSlice(records)
 	assert.Equal(t, 1, dict["a"])
 	assert.Equal(t, 1, dict["c"])
-	assert.Equal(t, 1, dict["d"])
 }
 
 func Test_Selector_SetWeight(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	nodeProvider := NewMockINodeProvider(ctrl)
+	nodeStore := NewMockINodeStore(ctrl)
 
 	// init selector
-	sel, _ := NewSelector()
+	sel, _ := NewSelector(nodeStore)
 
-	nodeProvider.EXPECT().AddHook(gomock.Any())
-	nodeProvider.EXPECT().GetHosts().Return([]string{"a", "b", "c"})
-	sel.SetNodeProvider(nodeProvider)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+		&Node{Addr: "b"},
+		&Node{Addr: "c"},
+	)
 
 	// test setPriority
 	sel.SetWeight("a", 3) // nolint:errcheck
@@ -87,7 +96,7 @@ func Test_Selector_SetWeight(t *testing.T) {
 
 	records := make([]string, 0)
 	for i := 0; i < 5; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -104,14 +113,17 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	nodeProvider := NewMockINodeProvider(ctrl)
+	nodeStore := NewMockINodeStore(ctrl)
 
 	// init selector
-	sel, _ := NewSelector()
+	sel, _ := NewSelector(nodeStore)
 
-	nodeProvider.EXPECT().AddHook(gomock.Any())
-	nodeProvider.EXPECT().GetHosts().Return([]string{"a", "b", "c"})
-	sel.SetNodeProvider(nodeProvider)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+		&Node{Addr: "b"},
+		&Node{Addr: "c"},
+	)
 
 	// test setPriority blockWeight
 	sel.SetWeight("a", BlockWeight)   // nolint:errcheck
@@ -123,7 +135,7 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	assert.Equal(t, DefaultWeight, weights["b"])
 	records := make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -146,18 +158,21 @@ func Test_Selector_SetPriority(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	nodeProvider := NewMockINodeProvider(ctrl)
+	nodeStore := NewMockINodeStore(ctrl)
 
-	sel, _ := NewSelector()
-	nodeProvider.EXPECT().AddHook(gomock.Any())
-	nodeProvider.EXPECT().GetHosts().Return([]string{"a", "b", "c"})
-	sel.SetNodeProvider(nodeProvider)
+	sel, _ := NewSelector(nodeStore)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+		&Node{Addr: "b"},
+		&Node{Addr: "c"},
+	)
 
 	// a 2 b 1 c 1
 	sel.setPriority(CatchUpPriority, "a")
 	records := make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -172,7 +187,7 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(DelayPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -188,7 +203,7 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(CatchUpPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -204,7 +219,7 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(ErrPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -220,7 +235,7 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(ErrPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -234,12 +249,15 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	nodeProvider := NewMockINodeProvider(ctrl)
+	nodeStore := NewMockINodeStore(ctrl)
 
-	sel, _ := NewSelector()
-	nodeProvider.EXPECT().AddHook(gomock.Any())
-	nodeProvider.EXPECT().GetHosts().Return([]string{"a", "b", "c"})
-	sel.SetNodeProvider(nodeProvider)
+	sel, _ := NewSelector(nodeStore)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+	sel.AddNodes(
+		&Node{Addr: "a"},
+		&Node{Addr: "b"},
+		&Node{Addr: "c"},
+	)
 
 	// a 2 b 1 c 0
 	sel.setPriority(CatchUpPriority, "a")
@@ -247,7 +265,7 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.setPriority(ErrPriority, "c")
 	records := make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -260,7 +278,7 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.SetWeight("a", BlockWeight) // nolint:errcheck
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
@@ -274,7 +292,7 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.SetWeight("b", BlockWeight) // nolint:errcheck
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeProvider.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
+		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
 			records = append(records, k)
 		}).Return(nil)
 		_, err := sel.Select()
