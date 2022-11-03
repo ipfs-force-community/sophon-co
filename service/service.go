@@ -28,7 +28,7 @@ type Service struct {
 	*proxy.UnSupport
 }
 
-// LocalChainService impls cli/api.LocalAPI
+// LocalAPIService impls cli/api.LocalAPI
 type LocalAPIService struct {
 	fx.In
 	*co.Selector

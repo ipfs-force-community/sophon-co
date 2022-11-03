@@ -160,7 +160,7 @@ func buildProxyAPI(sel *co.Selector) *proxy.Proxy {
 			if err != nil {
 				return nil, err
 			}
-			log.Infof("select node %s", node.Addr)
+			log.Debugf("select node %s", node.Addr)
 			return node.FullNode(), nil
 		},
 	}
