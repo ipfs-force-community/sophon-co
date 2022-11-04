@@ -75,7 +75,7 @@ func (c *Connector) Connect(info NodeInfo, version string) (*Node, error) {
 		info:   info,
 		ctx:    ctx,
 		cancel: cancel,
-		Addr:   addr,
+		Addr:   info.Addr,
 		sctx:   c.Ctx,
 		log:    log.With("remote", addr),
 	}
