@@ -9,6 +9,7 @@ import (
 	"github.com/dtynn/dix"
 	"go.uber.org/fx"
 
+	local_api "github.com/ipfs-force-community/chain-co/cli/api"
 	"github.com/ipfs-force-community/chain-co/co"
 	"github.com/ipfs-force-community/chain-co/proxy"
 
@@ -17,6 +18,7 @@ import (
 )
 
 const extractFullNodeAPIKey dix.Invoke = 1
+const extractLocalAPIKey dix.Invoke = 2
 
 // Build constructs the app with given di options
 func Build(ctx context.Context, overrides ...dix.Option) (dix.StopFunc, error) {
@@ -24,6 +26,7 @@ func Build(ctx context.Context, overrides ...dix.Option) (dix.StopFunc, error) {
 		dix.Override(new(co.NodeOption), co.DefaultNodeOption),
 		dix.Override(new(*co.Ctx), co.NewCtx),
 		dix.Override(new(*co.Connector), co.NewConnector),
+		dix.Override(new(co.INodeStore), co.NewNodeStore),
 		dix.Override(new(*co.Coordinator), buildCoordinator),
 		dix.Override(new(*co.Selector), co.NewSelector),
 		dix.Override(new(*proxy.Proxy), buildProxyAPI),
@@ -38,6 +41,14 @@ func Build(ctx context.Context, overrides ...dix.Option) (dix.StopFunc, error) {
 func FullNode(full *api.FullNode) dix.Option {
 	return dix.Override(extractFullNodeAPIKey, func(srv Service) error {
 		*full = &srv
+		return nil
+	})
+}
+
+// FullNode extracts api.FullNode from inside di
+func LocalAPI(api *local_api.LocalAPI) dix.Option {
+	return dix.Override(extractLocalAPIKey, func(srv LocalAPIService) error {
+		*api = &srv
 		return nil
 	})
 }
@@ -112,7 +123,7 @@ func buildCoordinator(lc fx.Lifecycle, ctx *co.Ctx, connector *co.Connector, inf
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go coordinator.Start()
-			sel.ReplaceNodes(nodes, nil, false)
+			sel.AddNodes(nodes...)
 			return nil
 		},
 		OnStop: func(context.Context) error {
@@ -149,7 +160,7 @@ func buildProxyAPI(sel *co.Selector) *proxy.Proxy {
 			if err != nil {
 				return nil, err
 			}
-
+			log.Debugf("select node %s", node.Addr)
 			return node.FullNode(), nil
 		},
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	local_api "github.com/ipfs-force-community/chain-co/cli/api"
 	"github.com/ipfs-force-community/chain-co/localwt"
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/metrics/ratelimit"
@@ -21,7 +22,7 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
-func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, mCnf *metrics.TraceConfig, jwt *localwt.LocalJwt, full api.FullNode, stop dix.StopFunc, maxRequestSize int64) error {
+func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, mCnf *metrics.TraceConfig, jwt *localwt.LocalJwt, full api.FullNode, localApi local_api.LocalAPI, stop dix.StopFunc, maxRequestSize int64) error {
 	serverOptions := []jsonrpc.ServerOption{}
 	if maxRequestSize > 0 {
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -29,6 +30,7 @@ func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, 
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
 	rpcServer2 := jsonrpc.NewServer(serverOptions...)
+	rpcServer3 := jsonrpc.NewServer(serverOptions...)
 
 	var remoteJwtCli *jwtclient.AuthClient
 	if len(authEndpoint) > 0 {
@@ -44,6 +46,7 @@ func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, 
 		handler = (http.Handler)(jwtclient.NewAuthMux(jwt, nil, rpcServer))
 		handler2 = (http.Handler)(jwtclient.NewAuthMux(jwt, nil, rpcServer2))
 	}
+	handler3 := (http.Handler)(jwtclient.NewAuthMux(jwt, nil, rpcServer3))
 
 	if repoter, err := metrics.RegisterJaeger(mCnf.ServerName, mCnf); err != nil {
 		log.Fatalf("register %s JaegerRepoter to %s failed:%s", mCnf.ServerName, mCnf.JaegerEndpoint, err)
@@ -52,6 +55,7 @@ func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, 
 		defer metrics.UnregisterJaeger(repoter)
 		handler = &ochttp.Handler{Handler: handler}
 		handler2 = &ochttp.Handler{Handler: handler2}
+		handler3 = &ochttp.Handler{Handler: handler3}
 	}
 
 	limitWrapper := full
@@ -83,6 +87,7 @@ func serveRPC(ctx context.Context, authEndpoint, rateLimitRedis, listen string, 
 
 	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: pma}, handler, rpcServer)
 	serveRpc("/rpc/v1", pma, handler2, rpcServer2)
+	serveRpc("/rpc/admin/v0", localApi, handler3, rpcServer3)
 
 	server := http.Server{
 		Addr:    listen,

@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api/v1api"
+	local_api "github.com/ipfs-force-community/chain-co/cli/api"
 
 	"github.com/ipfs-force-community/chain-co/dep"
 	"github.com/ipfs-force-community/chain-co/localwt"
@@ -20,11 +21,6 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "start the chain-ro daemon",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "listen",
-			Usage: "listen address for the service",
-			Value: ":1234",
-		},
 		&cli.Int64Flag{
 			Name:  "max-req-size",
 			Usage: "max request size",
@@ -66,6 +62,7 @@ var runCmd = &cli.Command{
 		defer appCancel()
 
 		var full v1api.FullNode
+		var localApi local_api.LocalAPI
 		localJwt, err := localwt.NewLocalJwt()
 		if err != nil {
 			return err
@@ -86,6 +83,7 @@ var runCmd = &cli.Command{
 			dep.APIVersionOption(cctx.String("version")),
 			service.ParseNodeInfoList(cctx.StringSlice("node"), cctx.String("version")),
 			service.FullNode(&full),
+			service.LocalAPI(&localApi),
 		)
 		if err != nil {
 			return nil
@@ -111,6 +109,7 @@ var runCmd = &cli.Command{
 			mCnf,
 			localJwt,
 			full,
+			localApi,
 			func(ctx context.Context) error {
 				appCancel()
 				stop(ctx) // nolint:errcheck

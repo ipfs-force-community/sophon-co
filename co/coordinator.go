@@ -59,7 +59,6 @@ func (c *Coordinator) Start() {
 		select {
 		case <-c.ctx.lc.Done():
 			return
-
 		case hc := <-c.ctx.headCh:
 			c.handleCandidate(hc)
 		case addr := <-c.ctx.errNodeCh:
@@ -74,7 +73,7 @@ func (c *Coordinator) Stop() error {
 	return nil
 }
 func (c *Coordinator) delNodeAddr(addr string) {
-	c.sel.delPriors(addr)
+	c.sel.setPriority(ErrPriority, addr)
 }
 func (c *Coordinator) handleCandidate(hc *headCandidate) {
 	addr := hc.node.info.Addr
@@ -100,7 +99,11 @@ func (c *Coordinator) handleCandidate(hc *headCandidate) {
 		c.head = hc.ts
 		c.weight = hc.weight
 		c.nodes = append(c.nodes[:0], addr)
-		c.sel.setPriors(addr)
+
+		preAddrs := c.sel.getAddrOfPriority(CatchUpPriority)
+		c.sel.setPriority(DelayPriority, preAddrs...)
+		c.sel.setPriority(CatchUpPriority, addr)
+
 		c.tspub.Pub(headChanges, tipsetChangeTopic)
 
 		return
@@ -117,8 +120,7 @@ func (c *Coordinator) handleCandidate(hc *headCandidate) {
 
 		if !contains {
 			c.nodes = append(c.nodes, addr)
-			c.sel.setPriors(c.nodes...)
-
+			c.sel.setPriority(CatchUpPriority, addr)
 			clog.Infof("another node %s caught up", addr)
 		}
 		return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	lcli "github.com/ipfs-force-community/chain-co/cli"
 	"github.com/ipfs-force-community/chain-co/version"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -23,6 +24,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		lcli.WeightCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing(cliName)
@@ -56,7 +58,13 @@ func main() {
 		Usage:                "read-only chain node for filecoin",
 		EnableBashCompletion: true,
 		Version:              version.Version + version.CurrentCommit,
-		Flags:                []cli.Flag{},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "listen",
+				Usage: "listen address for the service",
+				Value: "0.0.0.0:1234",
+			},
+		},
 
 		Commands: local,
 	}

@@ -55,3 +55,9 @@ dist-clean:
 build: $(BUILD_DEPS)
 	rm -f chain-ro
 	go build -o ./chain-ro $(GOFLAGS) ./cmd
+
+gen:
+	go run ./gen/perm-proxy
+	goimports -w cli
+	go generate ./...
+.PHONY: gen

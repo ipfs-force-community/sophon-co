@@ -1,119 +1,236 @@
 package co
 
 import (
-	"math/rand"
+	"fmt"
 	"sync"
 )
 
+type Priority int
+
+const (
+	// MaxWeight is the default max weight of a node
+	MaxValidWeight = 10
+
+	// DefaultWeight is the default weight of a node
+	DefaultWeight = 1
+
+	// BlockWeight means the node is blocked manually
+	// it will never be selected unless it's recover manually
+	BlockWeight = 0
+)
+const (
+	// ErrPriority means the node once respond with error and will be selected with lowest priority
+	ErrPriority = iota
+	// DelayPriority means the node is behind the latest head
+	DelayPriority
+	// CatchUpPriority means the node have catch up the latest head, they will be selected with highest priority
+	CatchUpPriority
+)
+
 // NewSelector constructs a Selector instance
-func NewSelector() (*Selector, error) {
+func NewSelector(nodes INodeStore) (*Selector, error) {
 	sel := &Selector{}
-	sel.prior.addrs = make([]string, 0, 64)
-	sel.all.addrs = make([]string, 0, 64)
-	sel.all.nodes = map[string]*Node{}
+	sel.weight = make(map[string]int)
+	sel.priority = make(map[string]int)
+	sel.selectALG = SWRRA()
+	sel.nodeProvider = nodes
 
 	return sel, nil
 }
 
 // Selector is used to select a best chain node to route the requests to
 type Selector struct {
-	prior struct {
-		sync.RWMutex
-		addrs []string
-	}
+	lk        sync.RWMutex
+	weight    map[string]int
+	priority  map[string]int
+	selectALG func(map[string]int) (string, error)
 
-	all struct {
-		sync.RWMutex
-		addrs []string
-		nodes map[string]*Node
-	}
+	nodeProvider INodeStore
 }
 
-// ReplaceNodes adds and removes nodes
-func (s *Selector) ReplaceNodes(add []*Node, removes map[string]bool, removesAll bool) {
-	s.all.Lock()
-
-	// reset
-	if removesAll || len(removes) > 0 {
-		s.all.addrs = s.all.addrs[:0]
-		for host := range s.all.nodes {
-			if removesAll || removes[host] {
-				s.all.nodes[host].Stop() // nolint:errcheck
-				delete(s.all.nodes, host)
-				continue
-			}
-
-			s.all.addrs = append(s.all.addrs, host)
-		}
-	}
-
-	for i := range add {
-		current := add[i]
-		if prev, has := s.all.nodes[current.info.Addr]; has {
-			prev.Stop() // nolint:errcheck
+func (s *Selector) AddNodes(nodes ...*Node) {
+	s.nodeProvider.AddNodes(nodes)
+	s.lk.Lock()
+	defer s.lk.Unlock()
+	for _, node := range nodes {
+		addr := node.Addr
+		if _, ok := s.weight[addr]; !ok {
+			s.weight[addr] = DefaultWeight
+			s.priority[addr] = DelayPriority
 		} else {
-			s.all.addrs = append(s.all.addrs, current.info.Addr)
+			s.priority[addr] = DelayPriority
 		}
+	}
+}
 
-		s.all.nodes[current.info.Addr] = current
-		go current.Start()
+func (s *Selector) getAddrOfPriority(priority int) []string {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	ret := make([]string, 0)
+	for addr, p := range s.priority {
+		if p == priority {
+			ret = append(ret, addr)
+		}
+	}
+	return ret
+}
+
+func (s *Selector) setPriority(priority int, addrs ...string) {
+	s.lk.Lock()
+	defer s.lk.Unlock()
+
+	if priority < ErrPriority {
+		priority = ErrPriority
+	} else if priority > CatchUpPriority {
+		priority = CatchUpPriority
 	}
 
-	s.all.Unlock()
+	for _, addr := range addrs {
+		w := s.priority[addr]
+		before := w
+		w = priority
+
+		s.priority[addr] = w
+		log.Debugf("change priority of %s from %d to %d", addr, before, w)
+	}
 }
 
-func (s *Selector) setPriors(addrs ...string) {
-	s.prior.Lock()
-	s.prior.addrs = append(s.prior.addrs[:0], addrs...)
-	s.prior.Unlock()
+func (s *Selector) ListPriority() map[string]int {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	ret := make(map[string]int)
+	for addr, p := range s.priority {
+		ret[addr] = p
+	}
+	return ret
 }
 
-func (s *Selector) delPriors(addr string) {
-	s.prior.Lock()
-	log.Warnf("remove address %s", addr)
-	s.prior.addrs = remove(s.prior.addrs, addr)
-	s.prior.Unlock()
+func (s *Selector) SetWeight(addr string, weight int) error {
+	s.lk.Lock()
+	defer s.lk.Unlock()
+
+	if weight < BlockWeight {
+		return fmt.Errorf("priority must be greater than %d", BlockWeight)
+	} else if weight > MaxValidWeight {
+		return fmt.Errorf("priority must be less than %d", MaxValidWeight)
+	}
+
+	w, ok := s.weight[addr]
+	if !ok {
+		return fmt.Errorf("node %s not found", addr)
+	}
+	before := w
+	w = weight
+
+	s.weight[addr] = w
+	log.Debugf("change priority of %s from %d to %d", addr, before, w)
+	return nil
+}
+
+func (s *Selector) ListWeight() map[string]int {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	newWeight := make(map[string]int, len(s.weight))
+	for addr, w := range s.weight {
+		newWeight[addr] = w
+	}
+	return newWeight
 }
 
 // Select tries to choose a node from the candidates
 func (s *Selector) Select() (*Node, error) {
-	var addr string
+	s.lk.RLock()
+	defer s.lk.RUnlock()
 
-	s.prior.RLock()
-	psize := len(s.prior.addrs)
-	switch psize {
-	case 0:
+	errQue := make(map[string]int)
+	delayQue := make(map[string]int)
+	catchUpQue := make(map[string]int)
 
-	case 1:
-		addr = s.prior.addrs[0]
-
-	default:
-		addr = s.prior.addrs[rand.Intn(psize)]
-	}
-	s.prior.RUnlock()
-
-	s.all.RLock()
-	defer s.all.RUnlock()
-
-	if addr != "" {
-		if node, ok := s.all.nodes[addr]; ok {
-			return node, nil
+	for addr, p := range s.priority {
+		if p == CatchUpPriority {
+			catchUpQue[addr] = s.weight[addr]
+		} else if p == DelayPriority {
+			delayQue[addr] = s.weight[addr]
+		} else {
+			errQue[addr] = s.weight[addr]
 		}
 	}
 
-	allSize := len(s.all.addrs)
-	if allSize == 0 {
+	var addr string = ""
+	if len(catchUpQue) > 0 {
+		addr, _ = s.selectALG(catchUpQue)
+	}
+	if addr == "" && len(delayQue) > 0 {
+		addr, _ = s.selectALG(delayQue)
+	}
+	if addr == "" && len(errQue) > 0 {
+		addr, _ = s.selectALG(errQue)
+	}
+
+	if addr == "" {
 		return nil, ErrNoNodeAvailable
 	}
 
-	return s.all.nodes[s.all.addrs[rand.Intn(allSize)]], nil
+	return s.nodeProvider.GetNode(addr), nil
 }
 
-func remove(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
+// Smooth Weight Round Robin Algorithm
+// weight should be positive and len of weight shuold greater than 0
+func SWRRA() func(map[string]int) (string, error) {
+	state := make(map[string]int)
+	lk := sync.Mutex{}
+	return func(weight map[string]int) (string, error) {
+		lk.Lock()
+		defer lk.Unlock()
+		// check len of weight
+		if len(weight) == 0 {
+			return "", fmt.Errorf("weight is empty")
+		}
+
+		// 0. exclude the nodes with weight 0
+		selectSet := make(map[string]int, len(weight))
+		for addr, w := range weight {
+			if w > 0 {
+				selectSet[addr] = w
+			}
+		}
+		if len(selectSet) == 0 {
+			return "", fmt.Errorf("no node available")
+		}
+
+		for {
+			// 1. calc state
+			for k, w := range selectSet {
+				s, exist := state[k]
+				if !exist {
+					state[k] = 0
+				}
+				state[k] = s + int(w)
+			}
+
+			// 2. select biggest state of weight
+			maxState := 0
+			maxKey := ""
+			for k, s := range state {
+				if s > maxState {
+					maxState = s
+					maxKey = k
+				}
+			}
+
+			// 3. deduct total weight
+			totalWeight := 0
+			for _, w := range selectSet {
+				totalWeight += int(w)
+			}
+			state[maxKey] -= totalWeight
+
+			// 4. check if maxKey is available
+			if _, exist := selectSet[maxKey]; exist {
+				return maxKey, nil
+			} else if state[maxKey] == 0 {
+				delete(state, maxKey)
+			}
 		}
 	}
-	return s
 }
