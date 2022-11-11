@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/ipfs-force-community/metrics"
@@ -68,7 +68,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile("./token", token, 0666)
+		err = os.WriteFile("./token", token, 0666)
 
 		if err != nil {
 			return err

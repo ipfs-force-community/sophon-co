@@ -46,7 +46,7 @@ test:
 	go test -race ./...
 
 lint: $(BUILD_DEPS)
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+	golangci-lint run
 
 dist-clean:
 	git clean -xdff

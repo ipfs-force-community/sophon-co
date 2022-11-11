@@ -2,8 +2,9 @@ package co
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 	"sync"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type Priority int
@@ -126,6 +127,13 @@ func (s *Selector) SetWeight(addr string, weight int) error {
 	s.weight[addr] = w
 	log.Debugf("change priority of %s from %d to %d", addr, before, w)
 	return nil
+}
+
+func (s *Selector) Weight(addr string) int {
+	s.lk.Lock()
+	defer s.lk.Unlock()
+
+	return s.weight[addr]
 }
 
 func (s *Selector) ListWeight() map[string]int {

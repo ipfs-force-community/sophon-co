@@ -2,15 +2,17 @@ package co
 
 import (
 	"context"
-	lru "github.com/hashicorp/golang-lru"
 	"sync"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/hashicorp/go-multierror"
+
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
@@ -83,6 +85,7 @@ func NewNode(cctx *Ctx, info NodeInfo) (*Node, error) {
 	ctx, cancel := context.WithCancel(cctx.lc)
 	blkCache, err := lru.NewARC(100)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	return &Node{

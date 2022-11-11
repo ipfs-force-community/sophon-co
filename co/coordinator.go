@@ -77,10 +77,16 @@ func (c *Coordinator) delNodeAddr(addr string) {
 }
 func (c *Coordinator) handleCandidate(hc *headCandidate) {
 	addr := hc.node.info.Addr
-	clog := log.With("node", addr, "h", hc.ts.Height(), "w", hc.weight, "drift", time.Now().Unix()-int64(hc.ts.MinTimestamp()))
 
 	c.headMu.Lock()
 	defer c.headMu.Unlock()
+
+	if c.sel.Weight(addr) == 0 {
+		log.Infof("skip zero weight node %s ", addr)
+		return
+	}
+	clog := log.With("node", addr, "h", hc.ts.Height(), "w", hc.weight, "drift", time.Now().Unix()-int64(hc.ts.MinTimestamp()))
+
 	//1. more weight
 	//2. if equal weight. select more blocks
 	if c.head == nil || hc.weight.GreaterThan(c.weight) || (hc.weight.Equals(c.weight) && len(hc.ts.Blocks()) > len(c.head.Blocks())) {

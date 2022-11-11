@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/ipfs-force-community/chain-co/api"
@@ -45,7 +44,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := ioutil.WriteFile(t.outPath, code, 0644); err != nil {
+		if err := os.WriteFile(t.outPath, code, 0644); err != nil {
 			fmt.Println("ERR:", err)
 			os.Exit(1)
 		}

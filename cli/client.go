@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -16,7 +16,7 @@ func NewLocalRPCClient(ctx context.Context, addr string, opts ...jsonrpc.Option)
 	port := strings.Split(addr, ":")[1]
 	endpoint := fmt.Sprintf("http://127.0.0.1:%s/rpc/admin/v0", port)
 
-	token, err := ioutil.ReadFile("./token")
+	token, err := os.ReadFile("./token")
 	token = bytes.TrimSpace(token)
 	if err != nil {
 		return nil, nil, err

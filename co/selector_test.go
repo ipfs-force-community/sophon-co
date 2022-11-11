@@ -3,6 +3,8 @@ package co
 import (
 	"testing"
 
+	"github.com/filecoin-project/lotus/chain/types"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,11 +47,10 @@ func Test_Selector_UpdateNodes(t *testing.T) {
 	// init selector
 	sel, _ := NewSelector(nodeStore)
 	nodeStore.EXPECT().AddNodes(gomock.Any())
-	sel.AddNodes(
-		&Node{Addr: "a"},
-		&Node{Addr: "b"},
-		&Node{Addr: "c"},
-	)
+	nodes := []*Node{{Addr: "a"},
+		{Addr: "b"},
+		{Addr: "c"}}
+	sel.AddNodes(nodes...)
 
 	nodeStore.EXPECT().AddNodes(gomock.Any())
 	sel.AddNodes(
@@ -61,10 +62,16 @@ func Test_Selector_UpdateNodes(t *testing.T) {
 
 	records := make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		nodeStore.EXPECT().GetNode(gomock.Any()).AnyTimes().DoAndReturn(func(arg0 string) *Node {
+			for _, node := range nodes {
+				if node.Addr == arg0 {
+					return node
+				}
+			}
+			return nil
+		})
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict := countSlice(records)
@@ -82,11 +89,10 @@ func Test_Selector_SetWeight(t *testing.T) {
 	sel, _ := NewSelector(nodeStore)
 
 	nodeStore.EXPECT().AddNodes(gomock.Any())
-	sel.AddNodes(
-		&Node{Addr: "a"},
-		&Node{Addr: "b"},
-		&Node{Addr: "c"},
-	)
+	nodes := []*Node{{Addr: "a"},
+		{Addr: "b"},
+		{Addr: "c"}}
+	sel.AddNodes(nodes...)
 
 	// test setPriority
 	sel.SetWeight("a", 3) // nolint:errcheck
@@ -96,10 +102,16 @@ func Test_Selector_SetWeight(t *testing.T) {
 
 	records := make([]string, 0)
 	for i := 0; i < 5; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		nodeStore.EXPECT().GetNode(gomock.Any()).AnyTimes().DoAndReturn(func(arg0 string) *Node {
+			for _, node := range nodes {
+				if node.Addr == arg0 {
+					return node
+				}
+			}
+			return nil
+		})
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict := countSlice(records)
@@ -119,11 +131,10 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	sel, _ := NewSelector(nodeStore)
 
 	nodeStore.EXPECT().AddNodes(gomock.Any())
-	sel.AddNodes(
-		&Node{Addr: "a"},
-		&Node{Addr: "b"},
-		&Node{Addr: "c"},
-	)
+	nodes := []*Node{{Addr: "a"},
+		{Addr: "b"},
+		{Addr: "c"}}
+	sel.AddNodes(nodes...)
 
 	// test setPriority blockWeight
 	sel.SetWeight("a", BlockWeight)   // nolint:errcheck
@@ -135,10 +146,16 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	assert.Equal(t, DefaultWeight, weights["b"])
 	records := make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		nodeStore.EXPECT().GetNode(gomock.Any()).AnyTimes().DoAndReturn(func(arg0 string) *Node {
+			for _, node := range nodes {
+				if node.Addr == arg0 {
+					return node
+				}
+			}
+			return nil
+		})
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict := countSlice(records)
@@ -149,7 +166,7 @@ func Test_Selector_SetWeight_BlockWeight(t *testing.T) {
 	sel.SetWeight("a", BlockWeight) // nolint:errcheck
 	sel.SetWeight("c", BlockWeight) // nolint:errcheck
 	sel.SetWeight("b", BlockWeight) // nolint:errcheck
-	_, err := sel.Select()
+	_, err := sel.Select(types.EmptyTSK)
 	assert.Error(t, err)
 	assert.Equal(t, ErrNoNodeAvailable, err)
 }
@@ -162,20 +179,25 @@ func Test_Selector_SetPriority(t *testing.T) {
 
 	sel, _ := NewSelector(nodeStore)
 	nodeStore.EXPECT().AddNodes(gomock.Any())
-	sel.AddNodes(
-		&Node{Addr: "a"},
-		&Node{Addr: "b"},
-		&Node{Addr: "c"},
-	)
+	nodes := []*Node{{Addr: "a"},
+		{Addr: "b"},
+		{Addr: "c"}}
+	sel.AddNodes(nodes...)
+	nodeStore.EXPECT().GetNode(gomock.Any()).AnyTimes().DoAndReturn(func(arg0 string) *Node {
+		for _, node := range nodes {
+			if node.Addr == arg0 {
+				return node
+			}
+		}
+		return nil
+	})
 
 	// a 2 b 1 c 1
 	sel.setPriority(CatchUpPriority, "a")
 	records := make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict := countSlice(records)
@@ -187,10 +209,8 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(DelayPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict = countSlice(records)
@@ -203,10 +223,8 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(CatchUpPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict = countSlice(records)
@@ -219,10 +237,8 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(ErrPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict = countSlice(records)
@@ -235,10 +251,8 @@ func Test_Selector_SetPriority(t *testing.T) {
 	sel.setPriority(ErrPriority, "c")
 	records = make([]string, 0)
 	for i := 0; i < 3; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict = countSlice(records)
@@ -253,11 +267,18 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 
 	sel, _ := NewSelector(nodeStore)
 	nodeStore.EXPECT().AddNodes(gomock.Any())
-	sel.AddNodes(
-		&Node{Addr: "a"},
-		&Node{Addr: "b"},
-		&Node{Addr: "c"},
-	)
+	nodes := []*Node{{Addr: "a"},
+		{Addr: "b"},
+		{Addr: "c"}}
+	sel.AddNodes(nodes...)
+	nodeStore.EXPECT().GetNode(gomock.Any()).AnyTimes().DoAndReturn(func(arg0 string) *Node {
+		for _, node := range nodes {
+			if node.Addr == arg0 {
+				return node
+			}
+		}
+		return nil
+	})
 
 	// a 2 b 1 c 0
 	sel.setPriority(CatchUpPriority, "a")
@@ -265,10 +286,8 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.setPriority(ErrPriority, "c")
 	records := make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict := countSlice(records)
@@ -278,10 +297,8 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.SetWeight("a", BlockWeight) // nolint:errcheck
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict = countSlice(records)
@@ -292,10 +309,8 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.SetWeight("b", BlockWeight) // nolint:errcheck
 	records = make([]string, 0)
 	for i := 0; i < 4; i++ {
-		nodeStore.EXPECT().GetNode(gomock.Any()).Do(func(k string) {
-			records = append(records, k)
-		}).Return(nil)
-		_, err := sel.Select()
+		node, err := sel.Select(types.EmptyTSK)
+		records = append(records, node.Addr)
 		assert.NoError(t, err)
 	}
 	dict = countSlice(records)
@@ -305,7 +320,7 @@ func Test_Selector_SetPriority_SetWeight(t *testing.T) {
 	sel.SetWeight("a", BlockWeight) // nolint:errcheck
 	sel.SetWeight("b", BlockWeight) // nolint:errcheck
 	sel.SetWeight("c", BlockWeight) // nolint:errcheck
-	_, err := sel.Select()
+	_, err := sel.Select(types.EmptyTSK)
 	assert.Equal(t, ErrNoNodeAvailable, err)
 }
 

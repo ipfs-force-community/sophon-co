@@ -3,11 +3,12 @@ package gen
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 	"go/build"
 	"go/format"
 	"reflect"
 	"strings"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var errType = reflect.TypeOf((*error)(nil)).Elem()
