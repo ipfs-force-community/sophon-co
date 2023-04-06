@@ -3,7 +3,11 @@ package co
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +40,94 @@ func Test_Selector_Init(t *testing.T) {
 	assert.Equal(t, DelayPriority, priorities["a"])
 	assert.Equal(t, DelayPriority, priorities["b"])
 	assert.Equal(t, DelayPriority, priorities["d"])
+}
+
+func genBlockHeader(t *testing.T) *types.BlockHeader {
+	addr, err := address.NewIDAddress(12512063)
+	assert.NoError(t, err)
+
+	c, err := cid.Decode("bafyreicmaj5hhoy5mgqvamfhgexxyergw7hdeshizghodwkjg6qmpoco7i")
+	assert.NoError(t, err)
+
+	return &types.BlockHeader{
+		Miner: addr,
+		Ticket: &types.Ticket{
+			VRFProof: []byte("vrf proof0000000vrf proof0000000"),
+		},
+		ElectionProof: &types.ElectionProof{
+			VRFProof: []byte("vrf proof0000000vrf proof0000000"),
+		},
+		Parents:               []cid.Cid{c, c},
+		ParentMessageReceipts: c,
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
+		ParentWeight:          types.NewInt(123125126212),
+		Messages:              c,
+		Height:                85919298723,
+		ParentStateRoot:       c,
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
+		ParentBaseFee:         types.NewInt(3432432843291),
+	}
+}
+
+func TestSelect(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	nodeStore := NewMockINodeStore(ctrl)
+
+	// init selector
+	sel, _ := NewSelector(nodeStore)
+	nodeStore.EXPECT().AddNodes(gomock.Any())
+
+	var nodes []*Node
+	nodeMap := make(map[string]*Node, 3)
+	for _, addr := range []string{"a", "b", "c"} {
+		blkCache, err := newBlockHeaderCache(20)
+		assert.NoError(t, err)
+		node := &Node{
+			Addr:     addr,
+			blkCache: blkCache,
+		}
+		nodes = append(nodes, node)
+		nodeMap[addr] = node
+
+		sel.setPriority(DelayPriority, addr)
+	}
+
+	ts, err := types.NewTipSet([]*types.BlockHeader{genBlockHeader(t)})
+	assert.NoError(t, err)
+	nodeMap["c"].blkCache.add([]*api.HeadChange{
+		{Val: ts},
+	})
+
+	sel.AddNodes(nodes...)
+
+	nodeStore.EXPECT().GetNode(gomock.Any()).DoAndReturn(
+		func(arg string) interface{} {
+			node, ok := nodeMap[arg]
+			if !ok {
+				panic("not found node: " + arg)
+			}
+
+			return node
+		},
+	).AnyTimes()
+
+	addrs := []string{"a", "b"}
+	for i := 0; i < 100000; i++ {
+		addr := addrs[i%2]
+		sel.setPriority(CatchUpPriority, addr)
+
+		node, err := sel.Select(types.EmptyTSK)
+		assert.NoError(t, err)
+		assert.Equal(t, addr, node.Addr)
+
+		node, err = sel.Select(ts.Key())
+		assert.NoError(t, err)
+		assert.Equal(t, "c", node.Addr)
+
+		sel.setPriority(DelayPriority, addr)
+	}
 }
 
 func Test_Selector_UpdateNodes(t *testing.T) {
