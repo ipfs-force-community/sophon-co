@@ -157,11 +157,19 @@ func (s *Selector) Select(tsk types.TipSetKey) (*Node, error) {
 
 	for addr, p := range s.priority {
 		node := s.nodeProvider.GetNode(addr)
-		if !tsk.IsEmpty() && node.hasTipset(tsk) && p != ErrPriority {
-			log.Debugf("node %s has tipset %s, change to catchup node", addr, tsk.Cids())
-			catchUpQue[addr] = s.weight[addr]
+		if !tsk.IsEmpty() && p != ErrPriority {
+			if node.hasTipset(tsk) {
+				log.Debugf("node %s has tipset %s, change to catchup node", addr, tsk.Cids())
+				catchUpQue[addr] = s.weight[addr]
+			} else {
+				// Ensure that there are nodes available for use
+				log.Debugf("node %s not has tipset %s, change to delay node", addr, tsk.Cids())
+				delayQue[addr] = s.weight[addr]
+			}
 			continue
 		}
+
+		// tsk is empty
 		if p == CatchUpPriority {
 			catchUpQue[addr] = s.weight[addr]
 		} else if p == DelayPriority {
