@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.1
+
+* 修复调用接口时区块不存在问题 [[#43](https://github.com/ipfs-force-community/chain-co/pull/43)]
+
 ## v0.4.0
 
 * 升级 venus-auth 版本到 v1.10.0
