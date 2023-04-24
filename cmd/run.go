@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
+	"io"
 	"os"
 	"strings"
 
@@ -65,7 +68,12 @@ var runCmd = &cli.Command{
 		var full v1api.FullNode
 		var localApi local_api.LocalAPI
 
-		localJwt, token, err := jwtclient.NewLocalAuthClient()
+		//localJwt, token, err := jwtclient.NewLocalAuthClient()
+		secret, err := getOrGenKey(cctx.Bool("persistent-key-mode"))
+		if err != nil {
+			return err
+		}
+		localJwt, token, err := jwtclient.NewLocalAuthClientWithSecret(secret)
 		if err != nil {
 			return err
 		}
@@ -117,4 +125,45 @@ var runCmd = &cli.Command{
 			cctx.Int64("max-req-size"),
 		)
 	},
+}
+
+// fileExists checks whether the file exists.
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return !errors.Is(err, os.ErrNotExist)
+}
+
+func randSecret() ([]byte, error) {
+	return io.ReadAll(io.LimitReader(rand.Reader, 32))
+}
+func getOrGenKey(persistentMode bool) ([]byte, error) {
+	if persistentMode {
+		keyFile := "./key"
+		if exist := fileExists(keyFile); exist {
+			secretRead, err := os.ReadFile(keyFile)
+			if err != nil {
+				return nil, err
+			}
+			if len(secretRead) == 0 {
+				return nil, errors.New("key is empty")
+			}
+			return secretRead, nil
+		} else {
+			secret, err := randSecret()
+			if err != nil {
+				return nil, err
+			}
+			err = os.WriteFile(keyFile, secret, 0o666)
+			if err != nil {
+				return nil, err
+			}
+			return secret, nil
+		}
+	} else {
+		secret, err := randSecret()
+		if err != nil {
+			return nil, err
+		}
+		return secret, nil
+	}
 }
