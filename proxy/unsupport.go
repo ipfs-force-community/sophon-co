@@ -544,15 +544,6 @@ func (p *UnSupport) MpoolClear(in0 context.Context, in1 bool) (err error) {
 	return cli.MpoolClear(in0, in1)
 }
 
-func (p *UnSupport) MpoolGetConfig(in0 context.Context) (out0 *types.MpoolConfig, err error) {
-	cli, err := p.Select(types.EmptyTSK)
-	if err != nil {
-		err = fmt.Errorf("api MpoolGetConfig %v", err)
-		return
-	}
-	return cli.MpoolGetConfig(in0)
-}
-
 func (p *UnSupport) MpoolPushUntrusted(in0 context.Context, in1 *types.SignedMessage) (out0 cid.Cid, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {

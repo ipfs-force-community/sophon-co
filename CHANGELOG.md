@@ -1,14 +1,23 @@
 # Changelog
 
+## v0.5.1
+
+* update ffi
+
 ## v0.5.0
 
-* Feat/recorver docker cli by @LinZexiao in https://github.com/ipfs-force-community/chain-co/pull/32
+* bump uo version to v0.5.0
+* update lotus version to v1.22.0
+* update venus-auth version to v1.11.0
+## v0.5.0-rc1
+
+* Feat: recorver docker ci by @LinZexiao in https://github.com/ipfs-force-community/chain-co/pull/32
 * fix: fix wrap rate litmit by @simlecode in https://github.com/ipfs-force-community/chain-co/pull/33
 * feat: add status api to detect api ready by @hunjixin in https://github.com/ipfs-force-community/chain-co/pull/34
 * fix: build deps before build docker by @LinZexiao in https://github.com/ipfs-force-community/chain-co/pull/36
-* Feat/prevent launch without token by @LinZexiao in https://github.com/ipfs-force-community/chain-co/pull/41
-* Feat/add docker push by @hunjixin in https://github.com/ipfs-force-community/chain-co/pull/42
-* fix/block-not-found by @simlecode in https://github.com/ipfs-force-community/chain-co/pull/45
+* Feat: prevent launch without token by @LinZexiao in https://github.com/ipfs-force-community/chain-co/pull/41
+* Feat: add docker push by @hunjixin in https://github.com/ipfs-force-community/chain-co/pull/42
+* fix: block-not-found by @simlecode in https://github.com/ipfs-force-community/chain-co/pull/45
 * chore: support MpoolBatchPushUntrusted by @simlecode in https://github.com/ipfs-force-community/chain-co/pull/37
 
 ## v0.4.0

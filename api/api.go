@@ -374,6 +374,9 @@ type Proxy interface {
 
 	MpoolPublishByAddr(context.Context, address.Address) error //perm:write
 
+	// MpoolGetConfig returns (a copy of) the current mpool config
+	MpoolGetConfig(context.Context) (*types.MpoolConfig, error) //perm:read
+
 	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
@@ -600,8 +603,6 @@ type UnSupport interface {
 	// MpoolClear clears pending messages from the mpool
 	MpoolClear(context.Context, bool) error //perm:write
 
-	// MpoolGetConfig returns (a copy of) the current mpool config
-	MpoolGetConfig(context.Context) (*types.MpoolConfig, error) //perm:read
 	// MpoolSetConfig sets the mpool config to (a copy of) the supplied config
 	MpoolSetConfig(context.Context, *types.MpoolConfig) error //perm:admin
 

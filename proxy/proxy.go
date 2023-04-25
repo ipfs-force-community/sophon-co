@@ -574,6 +574,15 @@ func (p *Proxy) MpoolBatchPushUntrusted(in0 context.Context, in1 []*types.Signed
 	return cli.MpoolBatchPushUntrusted(in0, in1)
 }
 
+func (p *Proxy) MpoolGetConfig(in0 context.Context) (out0 *types.MpoolConfig, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api MpoolGetConfig %v", err)
+		return
+	}
+	return cli.MpoolGetConfig(in0)
+}
+
 func (p *Proxy) MpoolGetNonce(in0 context.Context, in1 address.Address) (out0 uint64, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
