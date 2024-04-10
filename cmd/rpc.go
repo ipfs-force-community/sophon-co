@@ -26,6 +26,8 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
+var rateLimitLog = logging.Logger("rate-limit")
+
 func serveRPC(ctx context.Context, cfg *config.Config, jwt jwtclient.IJwtAuthClient, full api.FullNode, localApi local_api.LocalAPI, stop dix.StopFunc, maxRequestSize int64) error {
 	serverOptions := []jsonrpc.ServerOption{}
 	if maxRequestSize > 0 {
@@ -48,8 +50,8 @@ func serveRPC(ctx context.Context, cfg *config.Config, jwt jwtclient.IJwtAuthCli
 			cfg.RateLimit.Redis,
 			nil, &core.ValueFromCtx{},
 			jwtclient.WarpLimitFinder(remoteJwtCli),
-			logging.Logger("rate-limit"))
-		_ = logging.SetLogLevel("rate-limit", "debug")
+			rateLimitLog,
+		)
 		if err != nil {
 			return err
 		}
