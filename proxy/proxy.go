@@ -6,16 +6,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	miner1 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	api1 "github.com/filecoin-project/lotus/api"
-	miner1 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	miner2 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -511,6 +513,15 @@ func (p *Proxy) EthTraceReplayBlockTransactions(in0 context.Context, in1 string,
 	return cli.EthTraceReplayBlockTransactions(in0, in1, in2)
 }
 
+func (p *Proxy) EthTraceTransaction(in0 context.Context, in1 string) (out0 []*ethtypes.EthTraceTransaction, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api EthTraceTransaction %v", err)
+		return
+	}
+	return cli.EthTraceTransaction(in0, in1)
+}
+
 func (p *Proxy) EthUninstallFilter(in0 context.Context, in1 ethtypes.EthFilterID) (out0 bool, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -527,6 +538,33 @@ func (p *Proxy) EthUnsubscribe(in0 context.Context, in1 ethtypes.EthSubscription
 		return
 	}
 	return cli.EthUnsubscribe(in0, in1)
+}
+
+func (p *Proxy) F3GetCertificate(in0 context.Context, in1 uint64) (out0 *certs.FinalityCertificate, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3GetCertificate %v", err)
+		return
+	}
+	return cli.F3GetCertificate(in0, in1)
+}
+
+func (p *Proxy) F3GetLatestCertificate(in0 context.Context) (out0 *certs.FinalityCertificate, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3GetLatestCertificate %v", err)
+		return
+	}
+	return cli.F3GetLatestCertificate(in0)
+}
+
+func (p *Proxy) F3Participate(in0 context.Context, in1 address.Address) (out0 <-chan string, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3Participate %v", err)
+		return
+	}
+	return cli.F3Participate(in0, in1)
 }
 
 func (p *Proxy) FilecoinAddressToEthAddress(in0 context.Context, in1 address.Address) (out0 ethtypes.EthAddress, err error) {
@@ -1069,7 +1107,7 @@ func (p *Proxy) StateMinerInfo(in0 context.Context, in1 address.Address, in2 typ
 	return cli.StateMinerInfo(in0, in1, in2)
 }
 
-func (p *Proxy) StateMinerInitialPledgeCollateral(in0 context.Context, in1 address.Address, in2 miner.SectorPreCommitInfo, in3 types.TipSetKey) (out0 big.Int, err error) {
+func (p *Proxy) StateMinerInitialPledgeCollateral(in0 context.Context, in1 address.Address, in2 miner1.SectorPreCommitInfo, in3 types.TipSetKey) (out0 big.Int, err error) {
 	cli, err := p.Select(in3)
 	if err != nil {
 		err = fmt.Errorf("api StateMinerInitialPledgeCollateral %v", err)
@@ -1096,7 +1134,7 @@ func (p *Proxy) StateMinerPower(in0 context.Context, in1 address.Address, in2 ty
 	return cli.StateMinerPower(in0, in1, in2)
 }
 
-func (p *Proxy) StateMinerPreCommitDepositForPower(in0 context.Context, in1 address.Address, in2 miner.SectorPreCommitInfo, in3 types.TipSetKey) (out0 big.Int, err error) {
+func (p *Proxy) StateMinerPreCommitDepositForPower(in0 context.Context, in1 address.Address, in2 miner1.SectorPreCommitInfo, in3 types.TipSetKey) (out0 big.Int, err error) {
 	cli, err := p.Select(in3)
 	if err != nil {
 		err = fmt.Errorf("api StateMinerPreCommitDepositForPower %v", err)
@@ -1186,7 +1224,7 @@ func (p *Proxy) StateSearchMsg(in0 context.Context, in1 types.TipSetKey, in2 cid
 	return cli.StateSearchMsg(in0, in1, in2, in3, in4)
 }
 
-func (p *Proxy) StateSectorExpiration(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner1.SectorExpiration, err error) {
+func (p *Proxy) StateSectorExpiration(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner2.SectorExpiration, err error) {
 	cli, err := p.Select(in3)
 	if err != nil {
 		err = fmt.Errorf("api StateSectorExpiration %v", err)
@@ -1204,7 +1242,7 @@ func (p *Proxy) StateSectorGetInfo(in0 context.Context, in1 address.Address, in2
 	return cli.StateSectorGetInfo(in0, in1, in2, in3)
 }
 
-func (p *Proxy) StateSectorPartition(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner1.SectorLocation, err error) {
+func (p *Proxy) StateSectorPartition(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner2.SectorLocation, err error) {
 	cli, err := p.Select(in3)
 	if err != nil {
 		err = fmt.Errorf("api StateSectorPartition %v", err)
@@ -1213,7 +1251,7 @@ func (p *Proxy) StateSectorPartition(in0 context.Context, in1 address.Address, i
 	return cli.StateSectorPartition(in0, in1, in2, in3)
 }
 
-func (p *Proxy) StateSectorPreCommitInfo(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner.SectorPreCommitOnChainInfo, err error) {
+func (p *Proxy) StateSectorPreCommitInfo(in0 context.Context, in1 address.Address, in2 abi.SectorNumber, in3 types.TipSetKey) (out0 *miner1.SectorPreCommitOnChainInfo, err error) {
 	cli, err := p.Select(in3)
 	if err != nil {
 		err = fmt.Errorf("api StateSectorPreCommitInfo %v", err)

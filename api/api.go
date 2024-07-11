@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
-	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -17,9 +16,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	miner13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -27,11 +25,11 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/lotus/api"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	libnetwork "github.com/libp2p/go-libp2p/core/network"
@@ -144,7 +142,7 @@ type Proxy interface {
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error) //perm:read
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error) //perm:read
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner13.SectorOnChainInfo, error) //perm:read
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
@@ -177,7 +175,7 @@ type Proxy interface {
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
-	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) //perm:read
+	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner13.SectorOnChainInfo, error) //perm:read
 	// StateSectorPartition finds deadline/partition with the specified sector
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error) //perm:read
 	// StateMinerInfo returns info about the indicated miner
@@ -194,7 +192,7 @@ type Proxy interface {
 	// StateMinerSectorAllocated checks if a sector is allocated
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner.SectorOnChainInfo, error) //perm:read
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner13.SectorOnChainInfo, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateSectorExpiration returns epoch at which given sector will expire
@@ -534,6 +532,21 @@ type Proxy interface {
 	// Note: this API is only available via websocket connections.
 	// This is an EXPERIMENTAL API and may be subject to change.
 	SubscribeActorEventsRaw(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) //perm:read
+
+	// Implmements OpenEthereum-compatible API method trace_transaction
+	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) //perm:read
+
+	// F3Participate should be called by a miner node to participate in signing F3 consensus.
+	// The address should be of type ID
+	// The returned channel will never be closed by the F3
+	// If it is closed without the context being cancelled, the caller should retry.
+	// The values returned on the channel will inform the caller about participation
+	// Empty strings will be sent if participation succeeded, non-empty strings explain possible errors.
+	F3Participate(ctx context.Context, minerID address.Address) (<-chan string, error) //perm:admin
+	// F3GetCertificate returns a finality certificate at given instance number
+	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
+	// F3GetLatestCertificate returns the latest finality certificate
+	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
 }
 
 // Local is a subset of api.FullNode.
@@ -724,71 +737,6 @@ type UnSupport interface {
 	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*api.MsgLookup, error)
 
 	// Other
-
-	// MethodGroup: Client
-	// The Client methods all have to do with interacting with the storage and
-	// retrieval markets as a client
-
-	// ClientImport imports file under the specified path into filestore.
-	ClientImport(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)
-	// ClientRemoveImport removes file import
-	ClientRemoveImport(ctx context.Context, importID imports.ID) error //perm:admin
-	// ClientStartDeal proposes a deal with a miner.
-	ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)
-	// ClientGetDealInfo returns the latest information about a given deal.
-	ClientGetDealInfo(context.Context, cid.Cid) (*api.DealInfo, error)
-	// ClientListDeals returns information about the deals made by the local client.
-	ClientListDeals(ctx context.Context) ([]api.DealInfo, error)
-	// ClientGetDealUpdates returns the status of updated deals
-	ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, error)
-	// ClientGetDealStatus returns status given a code
-	ClientGetDealStatus(ctx context.Context, statusCode uint64) (string, error)
-	// ClientHasLocal indicates whether a certain CID is locally stored.
-	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
-	// ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
-	ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]api.QueryOffer, error)
-	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
-	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error)
-
-	// ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
-	// of status updates.
-	ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error)
-	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
-	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*api.StorageAsk, error)
-	// ClientCalcCommP calculates the CommP and data size of the specified CID
-	ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error)
-	// ClientCalcCommP calculates the CommP for a specified file
-	ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error)
-	// ClientGenCar generates a CAR file for the specified file.
-	ClientGenCar(ctx context.Context, ref api.FileRef, outpath string) error
-	// ClientDealSize calculates real deal data size
-	ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error)
-	// ClientListTransfers returns the status of all ongoing transfers of data
-	ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error)
-	ClientDataTransferUpdates(ctx context.Context) (<-chan api.DataTransferChannel, error)
-	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
-	ClientRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
-	// ClientCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
-	ClientCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error
-	// ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
-	// which are stuck due to insufficient funds
-	ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error
-
-	// ClientCancelRetrievalDeal cancels an ongoing retrieval deal based on DealID
-	ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error //perm:write
-
-	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
-	ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:write
-
-	// ClientListRetrievals returns information about retrievals made by the local client
-	ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) //perm:write
-
-	// ClientGetRetrievalUpdates returns status of updated retrieval deals
-	ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error) //perm:write
-	// ClientListImports lists imported files and their root CIDs
-	ClientListImports(ctx context.Context) ([]api.Import, error)
-
-	// ClientListAsks() []Ask
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
@@ -982,11 +930,11 @@ type UnSupport interface {
 	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)
 
 	// v1.14.0
-	ClientRetrieve(ctx context.Context, params api.RetrievalOrder) (*api.RestrievalRes, error)
+	// ClientRetrieve(ctx context.Context, params api.RetrievalOrder) (*api.RestrievalRes, error)
 
-	ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error
+	// ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error
 
-	ClientExport(ctx context.Context, exportRef api.ExportRef, fileRef api.FileRef) error
+	// ClientExport(ctx context.Context, exportRef api.ExportRef, fileRef api.FileRef) error
 
 	MsigCancel(ctx context.Context, a address.Address, u uint64, a2 address.Address) (*api.MessagePrototype, error)
 
@@ -1001,6 +949,6 @@ type UnSupport interface {
 	// the splitstore
 	ChainHotGC(ctx context.Context, opts api.HotGCOpts) error //perm:admin
 
-	RaftState(ctx context.Context) (*api.RaftStateData, error) //perm:read
-	RaftLeader(ctx context.Context) (peer.ID, error)           //perm:read
+	// RaftState(ctx context.Context) (*api.RaftStateData, error) //perm:read
+	RaftLeader(ctx context.Context) (peer.ID, error) //perm:read
 }
