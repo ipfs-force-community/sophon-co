@@ -3,10 +3,12 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -549,6 +551,24 @@ func (p *Proxy) F3GetCertificate(in0 context.Context, in1 uint64) (out0 *certs.F
 	return cli.F3GetCertificate(in0, in1)
 }
 
+func (p *Proxy) F3GetECPowerTable(in0 context.Context, in1 types.TipSetKey) (out0 gpbft.PowerEntries, err error) {
+	cli, err := p.Select(in1)
+	if err != nil {
+		err = fmt.Errorf("api F3GetECPowerTable %v", err)
+		return
+	}
+	return cli.F3GetECPowerTable(in0, in1)
+}
+
+func (p *Proxy) F3GetF3PowerTable(in0 context.Context, in1 types.TipSetKey) (out0 gpbft.PowerEntries, err error) {
+	cli, err := p.Select(in1)
+	if err != nil {
+		err = fmt.Errorf("api F3GetF3PowerTable %v", err)
+		return
+	}
+	return cli.F3GetF3PowerTable(in0, in1)
+}
+
 func (p *Proxy) F3GetLatestCertificate(in0 context.Context) (out0 *certs.FinalityCertificate, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -558,13 +578,13 @@ func (p *Proxy) F3GetLatestCertificate(in0 context.Context) (out0 *certs.Finalit
 	return cli.F3GetLatestCertificate(in0)
 }
 
-func (p *Proxy) F3Participate(in0 context.Context, in1 address.Address) (out0 <-chan string, err error) {
+func (p *Proxy) F3Participate(in0 context.Context, in1 address.Address, in2 time.Time, in3 time.Time) (out0 bool, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api F3Participate %v", err)
 		return
 	}
-	return cli.F3Participate(in0, in1)
+	return cli.F3Participate(in0, in1, in2, in3)
 }
 
 func (p *Proxy) FilecoinAddressToEthAddress(in0 context.Context, in1 address.Address) (out0 ethtypes.EthAddress, err error) {
