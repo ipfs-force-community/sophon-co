@@ -477,15 +477,6 @@ func (p *UnSupport) MsigSwapPropose(in0 context.Context, in1 address.Address, in
 	return cli.MsigSwapPropose(in0, in1, in2, in3, in4)
 }
 
-func (p *UnSupport) NetAddrsListen(in0 context.Context) (out0 peer.AddrInfo, err error) {
-	cli, err := p.Select(types.EmptyTSK)
-	if err != nil {
-		err = fmt.Errorf("api NetAddrsListen %v", err)
-		return
-	}
-	return cli.NetAddrsListen(in0)
-}
-
 func (p *UnSupport) NetAgentVersion(in0 context.Context, in1 peer.ID) (out0 string, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -628,15 +619,6 @@ func (p *UnSupport) NetPing(in0 context.Context, in1 peer.ID) (out0 time.Duratio
 		return
 	}
 	return cli.NetPing(in0, in1)
-}
-
-func (p *UnSupport) NetProtectAdd(in0 context.Context, in1 []peer.ID) (err error) {
-	cli, err := p.Select(types.EmptyTSK)
-	if err != nil {
-		err = fmt.Errorf("api NetProtectAdd %v", err)
-		return
-	}
-	return cli.NetProtectAdd(in0, in1)
 }
 
 func (p *UnSupport) NetProtectList(in0 context.Context) (out0 []peer.ID, err error) {

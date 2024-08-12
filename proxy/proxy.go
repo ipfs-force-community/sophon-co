@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs-force-community/sophon-co/api"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ ProxyAPI = (*Proxy)(nil)
@@ -767,6 +768,15 @@ func (p *Proxy) MpoolSelects(in0 context.Context, in1 types.TipSetKey, in2 []flo
 	return cli.MpoolSelects(in0, in1, in2)
 }
 
+func (p *Proxy) NetAddrsListen(in0 context.Context) (out0 peer.AddrInfo, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api NetAddrsListen %v", err)
+		return
+	}
+	return cli.NetAddrsListen(in0)
+}
+
 func (p *Proxy) NetListening(in0 context.Context) (out0 bool, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -774,6 +784,15 @@ func (p *Proxy) NetListening(in0 context.Context) (out0 bool, err error) {
 		return
 	}
 	return cli.NetListening(in0)
+}
+
+func (p *Proxy) NetProtectAdd(in0 context.Context, in1 []peer.ID) (err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api NetProtectAdd %v", err)
+		return
+	}
+	return cli.NetProtectAdd(in0, in1)
 }
 
 func (p *Proxy) NetVersion(in0 context.Context) (out0 string, err error) {

@@ -560,6 +560,9 @@ type Proxy interface {
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetF3PowerTable returns a F3 specific power table.
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+
+	NetAddrsListen(context.Context) (peer.AddrInfo, error)  //perm:read
+	NetProtectAdd(ctx context.Context, acl []peer.ID) error //perm:admin
 }
 
 // Local is a subset of api.FullNode.
@@ -584,7 +587,6 @@ type UnSupport interface {
 	NetConnectedness(context.Context, peer.ID) (libnetwork.Connectedness, error) //perm:read
 	NetPeers(context.Context) ([]peer.AddrInfo, error)                           //perm:read
 	NetConnect(context.Context, peer.AddrInfo) error                             //perm:write
-	NetAddrsListen(context.Context) (peer.AddrInfo, error)                       //perm:read
 	NetDisconnect(context.Context, peer.ID) error                                //perm:write
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)                 //perm:read
 	NetPubsubScores(context.Context) ([]api.PubsubScore, error)                  //perm:read
@@ -610,7 +612,6 @@ type UnSupport interface {
 	NetBlockRemove(ctx context.Context, acl api.NetBlockList) error //perm:admin
 	NetBlockList(ctx context.Context) (api.NetBlockList, error)     //perm:read
 
-	NetProtectAdd(ctx context.Context, acl []peer.ID) error    //perm:admin
 	NetProtectRemove(ctx context.Context, acl []peer.ID) error //perm:admin
 	NetProtectList(ctx context.Context) ([]peer.ID, error)     //perm:read
 
