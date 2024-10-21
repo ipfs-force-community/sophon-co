@@ -27,6 +27,7 @@ import (
 
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/lotus/api"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -190,6 +191,11 @@ type Proxy interface {
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error) //perm:read
 	// StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
+	// StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+	// duration, size, and combined size of any verified pieces within the sector. This calculation
+	// depends on current network conditions (total power, total pledge and current rewards) at the
+	// given tipset.
+	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector is allocated
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
@@ -407,17 +413,43 @@ type Proxy interface {
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) //perm:read
 	// EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
 	EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) //perm:read
-	// FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress
-	FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) //perm:read
+	// `FilecoinAddressToEthAddress` converts any Filecoin address to an EthAddress.
+	//
+	// This method supports all Filecoin address types:
+	// - "f0" and "f4" addresses: Converted directly.
+	// - "f1", "f2", and "f3" addresses: First converted to their corresponding "f0" ID address, then to an EthAddress.
+	//
+	// Requirements:
+	// - For "f1", "f2", and "f3" addresses, they must be instantiated on-chain, as "f0" ID addresses are only assigned to actors when they are created on-chain.
+	// The simplest way to instantiate an address on chain is to send a transaction to the address.
+	//
+	// Note on chain reorganizations:
+	// "f0" ID addresses are not permanent and can be affected by chain reorganizations. To account for this,
+	// the API includes a `blkNum` parameter, which specifies the block number that is used to determine the tipset state to use for converting an
+	// "f1"/"f2"/"f3" address to an "f0" address. This parameter functions similarly to the `blkNum` parameter in the existing `EthGetBlockByNumber` API.
+	// See https://docs.alchemy.com/reference/eth-getblockbynumber for more details.
+	//
+	// Parameters:
+	// - ctx: The context for the API call.
+	// - filecoinAddress: The Filecoin address to convert.
+	// - blkNum: The block number or state for the conversion. Defaults to "finalized" for maximum safety.
+	//   Possible values: "pending", "latest", "finalized", "safe", or a specific block number represented as hex.
+	//
+	// Returns:
+	// - The corresponding EthAddress.
+	// - An error if the conversion fails.
+	FilecoinAddressToEthAddress(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthAddress, error) //perm:read
+
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) //perm:read
-
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error)                                //perm:read
+	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error)                               //perm:read
+	EthGetBlockReceiptsLimited(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*api.EthTxReceipt, error)  //perm:read
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)                                //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)                                         //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*ethtypes.EthBlock, error)                                        //perm:read
 	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)                                             //perm:read
 	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)                //perm:read
 	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)                                                     //perm:read
@@ -438,6 +470,8 @@ type Proxy interface {
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                                              //perm:read
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                                     //perm:read
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)                                                                          //perm:read
+	// EthSendRawTransactionUntrusted sends a transaction from and untrusted source, using MpoolPushUntrusted to submit the message.
+	EthSendRawTransactionUntrusted(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)                                             //perm:read
 	EthEstimateGas(ctx context.Context, tx jsonrpc.RawParams) (ethtypes.EthUint64, error)                                //perm:read
@@ -537,29 +571,69 @@ type Proxy interface {
 	// Implmements OpenEthereum-compatible API method trace_transaction
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*ethtypes.EthTraceTransaction, error) //perm:read
 
+	// Implements OpenEthereum-compatible API method trace_filter
+	EthTraceFilter(ctx context.Context, filter ethtypes.EthTraceFilterCriteria) ([]*ethtypes.EthTraceFilterResult, error) //perm:read
+
 	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
-	// F3Participate should be called by a storage provider to participate in signing F3 consensus.
-	// Calling this API gives the lotus node a lease to sign in F3 on behalf of given SP.
-	// The lease should be active only on one node. The lease will expire at the newLeaseExpiration.
-	// To continue participating in F3 with the given node, call F3Participate again before
-	// the newLeaseExpiration time.
-	// newLeaseExpiration cannot be further than 5 minutes in the future.
-	// It is recommended to call F3Participate every 60 seconds
-	// with newLeaseExpiration set 2min into the future.
-	// The oldLeaseExpiration has to be set to newLeaseExpiration of the last successful call.
-	// For the first call to F3Participate, set the oldLeaseExpiration to zero value/time in the past.
-	// F3Participate will return true if the lease was accepted.
-	// The minerID has to be the ID address of the miner.
-	F3Participate(ctx context.Context, minerID address.Address, newLeaseExpiration time.Time, oldLeaseExpiration time.Time) (bool, error) //perm:sign
-	// F3GetCertificate returns a finality certificate at given instance number
+	// F3GetOrRenewParticipationTicket retrieves or renews a participation ticket
+	// necessary for a miner to engage in the F3 consensus process for the given
+	// number of instances.
+	//
+	// This function accepts an optional previous ticket. If provided, a new ticket
+	// will be issued only under one the following conditions:
+	//   1. The previous ticket has expired.
+	//   2. The issuer of the previous ticket matches the node processing this
+	//      request.
+	//
+	// If there is an issuer mismatch (ErrF3ParticipationIssuerMismatch), the miner
+	// must retry obtaining a new ticket to ensure it is only participating in one F3
+	// instance at any time. If the number of instances is beyond the maximum leasable
+	// participation instances accepted by the node ErrF3ParticipationTooManyInstances
+	// is returned.
+	//
+	// Note: Successfully acquiring a ticket alone does not constitute participation.
+	// The retrieved ticket must be used to invoke F3Participate to actively engage
+	// in the F3 consensus process.
+	F3GetOrRenewParticipationTicket(ctx context.Context, minerID address.Address, previous api.F3ParticipationTicket, instances uint64) (api.F3ParticipationTicket, error) //perm:sign
+	// F3Participate enrolls a storage provider in the F3 consensus process using a
+	// provided participation ticket. This ticket grants a temporary lease that enables
+	// the provider to sign transactions as part of the F3 consensus.
+	//
+	// The function verifies the ticket's validity and checks if the ticket's issuer
+	// aligns with the current node. If there is an issuer mismatch
+	// (ErrF3ParticipationIssuerMismatch), the provider should retry with the same
+	// ticket, assuming the issue is due to transient network problems or operational
+	// deployment conditions. If the ticket is invalid
+	// (ErrF3ParticipationTicketInvalid) or has expired
+	// (ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
+	// calling F3GetOrRenewParticipationTicket.
+	//
+	// The start instance associated to the given ticket cannot be less than the
+	// start instance of any existing lease held by the miner. Otherwise,
+	// ErrF3ParticipationTicketStartBeforeExisting is returned. In this case, the
+	// miner should acquire a new ticket before attempting to participate again.
+	//
+	// For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
+	F3Participate(ctx context.Context, ticket api.F3ParticipationTicket) (api.F3ParticipationLease, error) //perm:sign
+	// F3GetCertificate returns a finality certificate at given instance.
 	F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) //perm:read
-	// F3GetLatestCertificate returns the latest finality certificate
+	// F3GetLatestCertificate returns the latest finality certificate.
 	F3GetLatestCertificate(ctx context.Context) (*certs.FinalityCertificate, error) //perm:read
+	// F3GetManifest returns the current manifest being used for F3 operations.
+	F3GetManifest(ctx context.Context) (*manifest.Manifest, error) //perm:read
 	// F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetF3PowerTable returns a F3 specific power table.
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
+	// it's enabled, and an error when disabled entirely.
+	F3IsRunning(ctx context.Context) (bool, error) //perm:read
+	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
+
+	NetAddrsListen(context.Context) (peer.AddrInfo, error)  //perm:read
+	NetProtectAdd(ctx context.Context, acl []peer.ID) error //perm:admin
 }
 
 // Local is a subset of api.FullNode.
@@ -584,7 +658,6 @@ type UnSupport interface {
 	NetConnectedness(context.Context, peer.ID) (libnetwork.Connectedness, error) //perm:read
 	NetPeers(context.Context) ([]peer.AddrInfo, error)                           //perm:read
 	NetConnect(context.Context, peer.AddrInfo) error                             //perm:write
-	NetAddrsListen(context.Context) (peer.AddrInfo, error)                       //perm:read
 	NetDisconnect(context.Context, peer.ID) error                                //perm:write
 	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)                 //perm:read
 	NetPubsubScores(context.Context) ([]api.PubsubScore, error)                  //perm:read
@@ -610,7 +683,6 @@ type UnSupport interface {
 	NetBlockRemove(ctx context.Context, acl api.NetBlockList) error //perm:admin
 	NetBlockList(ctx context.Context) (api.NetBlockList, error)     //perm:read
 
-	NetProtectAdd(ctx context.Context, acl []peer.ID) error    //perm:admin
 	NetProtectRemove(ctx context.Context, acl []peer.ID) error //perm:admin
 	NetProtectList(ctx context.Context) ([]peer.ID, error)     //perm:read
 

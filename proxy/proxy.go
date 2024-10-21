@@ -3,12 +3,12 @@ package proxy
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs-force-community/sophon-co/api"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ ProxyAPI = (*Proxy)(nil)
@@ -272,13 +273,31 @@ func (p *Proxy) EthGetBlockByHash(in0 context.Context, in1 ethtypes.EthHash, in2
 	return cli.EthGetBlockByHash(in0, in1, in2)
 }
 
-func (p *Proxy) EthGetBlockByNumber(in0 context.Context, in1 string, in2 bool) (out0 ethtypes.EthBlock, err error) {
+func (p *Proxy) EthGetBlockByNumber(in0 context.Context, in1 string, in2 bool) (out0 *ethtypes.EthBlock, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetBlockByNumber %v", err)
 		return
 	}
 	return cli.EthGetBlockByNumber(in0, in1, in2)
+}
+
+func (p *Proxy) EthGetBlockReceipts(in0 context.Context, in1 ethtypes.EthBlockNumberOrHash) (out0 []*api1.EthTxReceipt, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api EthGetBlockReceipts %v", err)
+		return
+	}
+	return cli.EthGetBlockReceipts(in0, in1)
+}
+
+func (p *Proxy) EthGetBlockReceiptsLimited(in0 context.Context, in1 ethtypes.EthBlockNumberOrHash, in2 abi.ChainEpoch) (out0 []*api1.EthTxReceipt, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api EthGetBlockReceiptsLimited %v", err)
+		return
+	}
+	return cli.EthGetBlockReceiptsLimited(in0, in1, in2)
 }
 
 func (p *Proxy) EthGetBlockTransactionCountByHash(in0 context.Context, in1 ethtypes.EthHash) (out0 ethtypes.EthUint64, err error) {
@@ -479,6 +498,15 @@ func (p *Proxy) EthSendRawTransaction(in0 context.Context, in1 ethtypes.EthBytes
 	return cli.EthSendRawTransaction(in0, in1)
 }
 
+func (p *Proxy) EthSendRawTransactionUntrusted(in0 context.Context, in1 ethtypes.EthBytes) (out0 ethtypes.EthHash, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api EthSendRawTransactionUntrusted %v", err)
+		return
+	}
+	return cli.EthSendRawTransactionUntrusted(in0, in1)
+}
+
 func (p *Proxy) EthSubscribe(in0 context.Context, in1 jsonrpc.RawParams) (out0 ethtypes.EthSubscriptionID, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -504,6 +532,15 @@ func (p *Proxy) EthTraceBlock(in0 context.Context, in1 string) (out0 []*ethtypes
 		return
 	}
 	return cli.EthTraceBlock(in0, in1)
+}
+
+func (p *Proxy) EthTraceFilter(in0 context.Context, in1 ethtypes.EthTraceFilterCriteria) (out0 []*ethtypes.EthTraceFilterResult, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api EthTraceFilter %v", err)
+		return
+	}
+	return cli.EthTraceFilter(in0, in1)
 }
 
 func (p *Proxy) EthTraceReplayBlockTransactions(in0 context.Context, in1 string, in2 []string) (out0 []*ethtypes.EthTraceReplayBlockTransaction, err error) {
@@ -578,16 +615,52 @@ func (p *Proxy) F3GetLatestCertificate(in0 context.Context) (out0 *certs.Finalit
 	return cli.F3GetLatestCertificate(in0)
 }
 
-func (p *Proxy) F3Participate(in0 context.Context, in1 address.Address, in2 time.Time, in3 time.Time) (out0 bool, err error) {
+func (p *Proxy) F3GetManifest(in0 context.Context) (out0 *manifest.Manifest, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3GetManifest %v", err)
+		return
+	}
+	return cli.F3GetManifest(in0)
+}
+
+func (p *Proxy) F3GetOrRenewParticipationTicket(in0 context.Context, in1 address.Address, in2 api1.F3ParticipationTicket, in3 uint64) (out0 api1.F3ParticipationTicket, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3GetOrRenewParticipationTicket %v", err)
+		return
+	}
+	return cli.F3GetOrRenewParticipationTicket(in0, in1, in2, in3)
+}
+
+func (p *Proxy) F3GetProgress(in0 context.Context) (out0 gpbft.Instant, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3GetProgress %v", err)
+		return
+	}
+	return cli.F3GetProgress(in0)
+}
+
+func (p *Proxy) F3IsRunning(in0 context.Context) (out0 bool, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3IsRunning %v", err)
+		return
+	}
+	return cli.F3IsRunning(in0)
+}
+
+func (p *Proxy) F3Participate(in0 context.Context, in1 api1.F3ParticipationTicket) (out0 api1.F3ParticipationLease, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api F3Participate %v", err)
 		return
 	}
-	return cli.F3Participate(in0, in1, in2, in3)
+	return cli.F3Participate(in0, in1)
 }
 
-func (p *Proxy) FilecoinAddressToEthAddress(in0 context.Context, in1 address.Address) (out0 ethtypes.EthAddress, err error) {
+func (p *Proxy) FilecoinAddressToEthAddress(in0 context.Context, in1 jsonrpc.RawParams) (out0 ethtypes.EthAddress, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api FilecoinAddressToEthAddress %v", err)
@@ -767,6 +840,15 @@ func (p *Proxy) MpoolSelects(in0 context.Context, in1 types.TipSetKey, in2 []flo
 	return cli.MpoolSelects(in0, in1, in2)
 }
 
+func (p *Proxy) NetAddrsListen(in0 context.Context) (out0 peer.AddrInfo, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api NetAddrsListen %v", err)
+		return
+	}
+	return cli.NetAddrsListen(in0)
+}
+
 func (p *Proxy) NetListening(in0 context.Context) (out0 bool, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -774,6 +856,15 @@ func (p *Proxy) NetListening(in0 context.Context) (out0 bool, err error) {
 		return
 	}
 	return cli.NetListening(in0)
+}
+
+func (p *Proxy) NetProtectAdd(in0 context.Context, in1 []peer.ID) (err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api NetProtectAdd %v", err)
+		return
+	}
+	return cli.NetProtectAdd(in0, in1)
 }
 
 func (p *Proxy) NetVersion(in0 context.Context) (out0 string, err error) {
@@ -1134,6 +1225,15 @@ func (p *Proxy) StateMinerInitialPledgeCollateral(in0 context.Context, in1 addre
 		return
 	}
 	return cli.StateMinerInitialPledgeCollateral(in0, in1, in2, in3)
+}
+
+func (p *Proxy) StateMinerInitialPledgeForSector(in0 context.Context, in1 abi.ChainEpoch, in2 abi.SectorSize, in3 uint64, in4 types.TipSetKey) (out0 big.Int, err error) {
+	cli, err := p.Select(in4)
+	if err != nil {
+		err = fmt.Errorf("api StateMinerInitialPledgeForSector %v", err)
+		return
+	}
+	return cli.StateMinerInitialPledgeForSector(in0, in1, in2, in3, in4)
 }
 
 func (p *Proxy) StateMinerPartitions(in0 context.Context, in1 address.Address, in2 uint64, in3 types.TipSetKey) (out0 []api1.Partition, err error) {
