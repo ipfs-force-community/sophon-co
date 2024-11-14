@@ -273,7 +273,7 @@ func (p *Proxy) EthGetBlockByHash(in0 context.Context, in1 ethtypes.EthHash, in2
 	return cli.EthGetBlockByHash(in0, in1, in2)
 }
 
-func (p *Proxy) EthGetBlockByNumber(in0 context.Context, in1 string, in2 bool) (out0 *ethtypes.EthBlock, err error) {
+func (p *Proxy) EthGetBlockByNumber(in0 context.Context, in1 string, in2 bool) (out0 ethtypes.EthBlock, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetBlockByNumber %v", err)
@@ -649,6 +649,15 @@ func (p *Proxy) F3IsRunning(in0 context.Context) (out0 bool, err error) {
 		return
 	}
 	return cli.F3IsRunning(in0)
+}
+
+func (p *Proxy) F3ListParticipants(in0 context.Context) (out0 []api1.F3Participant, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3ListParticipants %v", err)
+		return
+	}
+	return cli.F3ListParticipants(in0)
 }
 
 func (p *Proxy) F3Participate(in0 context.Context, in1 api1.F3ParticipationTicket) (out0 api1.F3ParticipationLease, err error) {
