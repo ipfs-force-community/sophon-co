@@ -183,6 +183,15 @@ func (p *Proxy) ChainTipSetWeight(in0 context.Context, in1 types.TipSetKey) (out
 	return cli.ChainTipSetWeight(in0, in1)
 }
 
+func (p *Proxy) ChainValidateIndex(in0 context.Context, in1 abi.ChainEpoch, in2 bool) (out0 *types.IndexValidation, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api ChainValidateIndex %v", err)
+		return
+	}
+	return cli.ChainValidateIndex(in0, in1, in2)
+}
+
 func (p *Proxy) EthAccounts(in0 context.Context) (out0 []ethtypes.EthAddress, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
@@ -372,7 +381,7 @@ func (p *Proxy) EthGetStorageAt(in0 context.Context, in1 ethtypes.EthAddress, in
 	return cli.EthGetStorageAt(in0, in1, in2, in3)
 }
 
-func (p *Proxy) EthGetTransactionByBlockHashAndIndex(in0 context.Context, in1 ethtypes.EthHash, in2 ethtypes.EthUint64) (out0 ethtypes.EthTx, err error) {
+func (p *Proxy) EthGetTransactionByBlockHashAndIndex(in0 context.Context, in1 ethtypes.EthHash, in2 ethtypes.EthUint64) (out0 *ethtypes.EthTx, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetTransactionByBlockHashAndIndex %v", err)
@@ -381,7 +390,7 @@ func (p *Proxy) EthGetTransactionByBlockHashAndIndex(in0 context.Context, in1 et
 	return cli.EthGetTransactionByBlockHashAndIndex(in0, in1, in2)
 }
 
-func (p *Proxy) EthGetTransactionByBlockNumberAndIndex(in0 context.Context, in1 ethtypes.EthUint64, in2 ethtypes.EthUint64) (out0 ethtypes.EthTx, err error) {
+func (p *Proxy) EthGetTransactionByBlockNumberAndIndex(in0 context.Context, in1 string, in2 ethtypes.EthUint64) (out0 *ethtypes.EthTx, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetTransactionByBlockNumberAndIndex %v", err)
@@ -1162,6 +1171,15 @@ func (p *Proxy) StateMarketParticipants(in0 context.Context, in1 types.TipSetKey
 		return
 	}
 	return cli.StateMarketParticipants(in0, in1)
+}
+
+func (p *Proxy) StateMarketProposalPending(in0 context.Context, in1 cid.Cid, in2 types.TipSetKey) (out0 bool, err error) {
+	cli, err := p.Select(in2)
+	if err != nil {
+		err = fmt.Errorf("api StateMarketProposalPending %v", err)
+		return
+	}
+	return cli.StateMarketProposalPending(in0, in1, in2)
 }
 
 func (p *Proxy) StateMarketStorageDeal(in0 context.Context, in1 abi.DealID, in2 types.TipSetKey) (out0 *api1.MarketDeal, err error) {
