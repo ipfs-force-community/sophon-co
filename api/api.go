@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	miner13 "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -146,7 +146,7 @@ type Proxy interface {
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error) //perm:read
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner13.SectorOnChainInfo, error) //perm:read
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner16.SectorOnChainInfo, error) //perm:read
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
@@ -181,7 +181,7 @@ type Proxy interface {
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
-	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner13.SectorOnChainInfo, error) //perm:read
+	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner16.SectorOnChainInfo, error) //perm:read
 	// StateSectorPartition finds deadline/partition with the specified sector
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error) //perm:read
 	// StateMinerInfo returns info about the indicated miner
@@ -203,7 +203,7 @@ type Proxy interface {
 	// StateMinerSectorAllocated checks if a sector is allocated
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner13.SectorOnChainInfo, error) //perm:read
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner16.SectorOnChainInfo, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateSectorExpiration returns epoch at which given sector will expire
@@ -634,7 +634,7 @@ type Proxy interface {
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
 	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
-	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
+	F3GetProgress(ctx context.Context) (gpbft.InstanceProgress, error) //perm:read
 	// F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
 	F3ListParticipants(ctx context.Context) ([]api.F3Participant, error) //perm:read
 

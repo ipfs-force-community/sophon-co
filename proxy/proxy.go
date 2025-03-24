@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	miner1 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -642,7 +642,7 @@ func (p *Proxy) F3GetOrRenewParticipationTicket(in0 context.Context, in1 address
 	return cli.F3GetOrRenewParticipationTicket(in0, in1, in2, in3)
 }
 
-func (p *Proxy) F3GetProgress(in0 context.Context) (out0 gpbft.Instant, err error) {
+func (p *Proxy) F3GetProgress(in0 context.Context) (out0 gpbft.InstanceProgress, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api F3GetProgress %v", err)
