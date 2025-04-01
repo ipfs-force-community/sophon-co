@@ -9,9 +9,9 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-f3 v0.8.3
 	github.com/filecoin-project/go-jsonrpc v0.7.0
-	github.com/filecoin-project/go-state-types v0.16.0-rc7
-	github.com/filecoin-project/lotus v1.32.0-rc3
-	github.com/filecoin-project/venus v1.18.0-rc2
+	github.com/filecoin-project/go-state-types v0.16.0
+	github.com/filecoin-project/lotus v1.32.1
+	github.com/filecoin-project/venus v1.18.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -235,4 +235,4 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
 
-replace github.com/filecoin-project/lotus => github.com/ipfs-force-community/lotus v0.8.1-0.20250324071956-e5594e7c4d76
+replace github.com/filecoin-project/lotus => github.com/ipfs-force-community/lotus v0.8.1-0.20250331084623-f8eb6af8a92d
