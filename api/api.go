@@ -17,13 +17,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	miner16 "github.com/filecoin-project/go-state-types/builtin/v16/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
@@ -63,6 +62,15 @@ type Proxy interface {
 
 	// ChainGetTipSet returns the tipset specified by the given TipSetKey.
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error) //perm:read
+
+	// ChainGetFinalizedTipSet returns the latest finalized tipset. It uses the
+	// current F3 instance to determine the finalized tipset.
+	// This is the tipset at the end of the last finalized round and can be used
+	// for follow-up querying of the chain state with the assurance that the
+	// state will not change.
+	// If F3 is operational and finalizing in this node. If not, it will fall back
+	// to the Expected Consensus (EC) finality definition of head - 900 epochs.
+	ChainGetFinalizedTipSet(ctx context.Context) (*types.TipSet, error) //perm:read
 
 	// ChainGetBlockMessages returns messages stored in the specified block.
 	ChainGetBlockMessages(ctx context.Context, blockCid cid.Cid) (*api.BlockMessages, error) //perm:read
@@ -146,7 +154,7 @@ type Proxy interface {
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error) //perm:read
 	// StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner16.SectorOnChainInfo, error) //perm:read
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error) //perm:read
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
@@ -181,7 +189,7 @@ type Proxy interface {
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
-	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner16.SectorOnChainInfo, error) //perm:read
+	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) //perm:read
 	// StateSectorPartition finds deadline/partition with the specified sector
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error) //perm:read
 	// StateMinerInfo returns info about the indicated miner
@@ -200,10 +208,16 @@ type Proxy interface {
 	// depends on current network conditions (total power, total pledge and current rewards) at the
 	// given tipset.
 	StateMinerInitialPledgeForSector(ctx context.Context, sectorDuration abi.ChainEpoch, sectorSize abi.SectorSize, verifiedSize uint64, tsk types.TipSetKey) (types.BigInt, error) //perm:read
+	// StateMinerCreationDeposit calculates the deposit required for creating a new miner
+	// according to FIP-0077 specification. This deposit is based on the network's current
+	// economic parameters including circulating supply, network power, and pledge collateral.
+	//
+	// See: node/impl/full/state.go StateMinerCreationDeposit implementation.
+	StateMinerCreationDeposit(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector is allocated
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
 	// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner16.SectorOnChainInfo, error) //perm:read
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) ([]*miner.SectorOnChainInfo, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateSectorExpiration returns epoch at which given sector will expire
@@ -447,7 +461,7 @@ type Proxy interface {
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum string) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error)                                //perm:read
 	EthGetBlockReceipts(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) ([]*api.EthTxReceipt, error)                               //perm:read
@@ -630,6 +644,8 @@ type Proxy interface {
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetF3PowerTable returns a F3 specific power table.
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
+	// F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+	F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) //perm:read
 	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
