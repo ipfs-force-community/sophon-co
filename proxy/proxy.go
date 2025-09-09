@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v16/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v17/miner"
 	miner1 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -64,6 +64,15 @@ func (p *Proxy) ChainGetEvents(in0 context.Context, in1 cid.Cid) (out0 []types.E
 		return
 	}
 	return cli.ChainGetEvents(in0, in1)
+}
+
+func (p *Proxy) ChainGetFinalizedTipSet(in0 context.Context) (out0 *types.TipSet, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api ChainGetFinalizedTipSet %v", err)
+		return
+	}
+	return cli.ChainGetFinalizedTipSet(in0)
 }
 
 func (p *Proxy) ChainGetGenesis(in0 context.Context) (out0 *types.TipSet, err error) {
@@ -291,7 +300,7 @@ func (p *Proxy) EthGetBlockByNumber(in0 context.Context, in1 string, in2 bool) (
 	return cli.EthGetBlockByNumber(in0, in1, in2)
 }
 
-func (p *Proxy) EthGetBlockReceipts(in0 context.Context, in1 ethtypes.EthBlockNumberOrHash) (out0 []*api1.EthTxReceipt, err error) {
+func (p *Proxy) EthGetBlockReceipts(in0 context.Context, in1 ethtypes.EthBlockNumberOrHash) (out0 []*ethtypes.EthTxReceipt, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetBlockReceipts %v", err)
@@ -300,7 +309,7 @@ func (p *Proxy) EthGetBlockReceipts(in0 context.Context, in1 ethtypes.EthBlockNu
 	return cli.EthGetBlockReceipts(in0, in1)
 }
 
-func (p *Proxy) EthGetBlockReceiptsLimited(in0 context.Context, in1 ethtypes.EthBlockNumberOrHash, in2 abi.ChainEpoch) (out0 []*api1.EthTxReceipt, err error) {
+func (p *Proxy) EthGetBlockReceiptsLimited(in0 context.Context, in1 ethtypes.EthBlockNumberOrHash, in2 abi.ChainEpoch) (out0 []*ethtypes.EthTxReceipt, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetBlockReceiptsLimited %v", err)
@@ -318,7 +327,7 @@ func (p *Proxy) EthGetBlockTransactionCountByHash(in0 context.Context, in1 ethty
 	return cli.EthGetBlockTransactionCountByHash(in0, in1)
 }
 
-func (p *Proxy) EthGetBlockTransactionCountByNumber(in0 context.Context, in1 ethtypes.EthUint64) (out0 ethtypes.EthUint64, err error) {
+func (p *Proxy) EthGetBlockTransactionCountByNumber(in0 context.Context, in1 string) (out0 ethtypes.EthUint64, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetBlockTransactionCountByNumber %v", err)
@@ -435,7 +444,7 @@ func (p *Proxy) EthGetTransactionHashByCid(in0 context.Context, in1 cid.Cid) (ou
 	return cli.EthGetTransactionHashByCid(in0, in1)
 }
 
-func (p *Proxy) EthGetTransactionReceipt(in0 context.Context, in1 ethtypes.EthHash) (out0 *api1.EthTxReceipt, err error) {
+func (p *Proxy) EthGetTransactionReceipt(in0 context.Context, in1 ethtypes.EthHash) (out0 *ethtypes.EthTxReceipt, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetTransactionReceipt %v", err)
@@ -444,7 +453,7 @@ func (p *Proxy) EthGetTransactionReceipt(in0 context.Context, in1 ethtypes.EthHa
 	return cli.EthGetTransactionReceipt(in0, in1)
 }
 
-func (p *Proxy) EthGetTransactionReceiptLimited(in0 context.Context, in1 ethtypes.EthHash, in2 abi.ChainEpoch) (out0 *api1.EthTxReceipt, err error) {
+func (p *Proxy) EthGetTransactionReceiptLimited(in0 context.Context, in1 ethtypes.EthHash, in2 abi.ChainEpoch) (out0 *ethtypes.EthTxReceipt, err error) {
 	cli, err := p.Select(types.EmptyTSK)
 	if err != nil {
 		err = fmt.Errorf("api EthGetTransactionReceiptLimited %v", err)
@@ -640,6 +649,15 @@ func (p *Proxy) F3GetOrRenewParticipationTicket(in0 context.Context, in1 address
 		return
 	}
 	return cli.F3GetOrRenewParticipationTicket(in0, in1, in2, in3)
+}
+
+func (p *Proxy) F3GetPowerTableByInstance(in0 context.Context, in1 uint64) (out0 gpbft.PowerEntries, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api F3GetPowerTableByInstance %v", err)
+		return
+	}
+	return cli.F3GetPowerTableByInstance(in0, in1)
 }
 
 func (p *Proxy) F3GetProgress(in0 context.Context) (out0 gpbft.InstanceProgress, err error) {
@@ -1216,6 +1234,15 @@ func (p *Proxy) StateMinerAvailableBalance(in0 context.Context, in1 address.Addr
 		return
 	}
 	return cli.StateMinerAvailableBalance(in0, in1, in2)
+}
+
+func (p *Proxy) StateMinerCreationDeposit(in0 context.Context, in1 types.TipSetKey) (out0 big.Int, err error) {
+	cli, err := p.Select(in1)
+	if err != nil {
+		err = fmt.Errorf("api StateMinerCreationDeposit %v", err)
+		return
+	}
+	return cli.StateMinerCreationDeposit(in0, in1)
 }
 
 func (p *Proxy) StateMinerDeadlines(in0 context.Context, in1 address.Address, in2 types.TipSetKey) (out0 []api1.Deadline, err error) {
