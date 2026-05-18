@@ -1823,8 +1823,8 @@ github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506/g
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/filecoin-project/venus v0.9.2-0.20210331052540-ca4ea7bab5fa/go.mod h1:9IY4iNo5At3GMBUNa8we3aGL7zM3cFUNxy2rMpb86C0=
 github.com/filecoin-project/venus v0.9.5/go.mod h1:ol4DC0omgbpszB6UNJB92zT0QfAkux974U7aiW89XvI=
-github.com/filecoin-project/venus v1.20.0-rc1 h1:7QZ5UExwimyUEhAvKxDzaHXbUqdseHeghJwzfpriwcU=
-github.com/filecoin-project/venus v1.20.0-rc1/go.mod h1:1Jhpz5PAmQl3t4jkDtxHemvgpn92M6m+YE9omlySkzs=
+github.com/filecoin-project/venus v1.20.0 h1:ZpdVCeN9MsbtXhVscWtIks3zAH75IAJkips7iMM9HBo=
+github.com/filecoin-project/venus v1.20.0/go.mod h1:1Jhpz5PAmQl3t4jkDtxHemvgpn92M6m+YE9omlySkzs=
 github.com/filecoin-project/venus-sealer v1.0.3/go.mod h1:6cErhac2TkfheD/ii65kaZJYK2i5sY37ys3cGmfnfTA=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
@@ -2315,8 +2315,8 @@ github.com/invopop/jsonschema v0.12.0 h1:6ovsNSuvn9wEQVOyc72aycBMVQFKz7cPdMJn10C
 github.com/invopop/jsonschema v0.12.0/go.mod h1:ffZ5Km5SWWRAIN6wbDXItl95euhFz2uON45H2qjYt+0=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9 h1:5QavBltfvV6fz/+EbYsCkVxJ1MSJncZm6YuPs1SLdZU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
-github.com/ipfs-force-community/lotus v0.8.1-0.20260504023953-13dcc710da44 h1:u0f99lTThL6WLQomd4DJnwPY3zPKJRW/ef02OT9iJH4=
-github.com/ipfs-force-community/lotus v0.8.1-0.20260504023953-13dcc710da44/go.mod h1:ai3sbF1moDs/+UW0FNDjJ1Q/C3/y5hQapCgo6FgEWWM=
+github.com/ipfs-force-community/lotus v0.8.1-0.20260518081040-4da472ff9689 h1:OUaSFMgElHLwCLouBcvbwEfF3x8xGn4VsUbxjs+DsSE=
+github.com/ipfs-force-community/lotus v0.8.1-0.20260518081040-4da472ff9689/go.mod h1:ai3sbF1moDs/+UW0FNDjJ1Q/C3/y5hQapCgo6FgEWWM=
 github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574 h1:XOkJFbRIlCkEwjkPnVLL/gDt5sfqrii5An4SzBtBtLM=
 github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574/go.mod h1:VJhKwTZEUTTgJI/uPmfJrslV4xdANy/FjkWLLx89J8k=
 github.com/ipfs-force-community/sophon-auth v1.16.0 h1:H0k77sXoUIQz/HvE7go7JYY516leUK5Mj8oU1CBRM1s=
