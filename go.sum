@@ -2323,8 +2323,8 @@ github.com/invopop/jsonschema v0.14.0 h1:MHQqLhvpNUZfw+hM3AZDYK7jxO8FZoQeQM77g8i
 github.com/invopop/jsonschema v0.14.0/go.mod h1:ygm6C2EaVNMBDPpaPlnOA2pFAxBnxGjFlMZABxm9n2I=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9 h1:5QavBltfvV6fz/+EbYsCkVxJ1MSJncZm6YuPs1SLdZU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
-github.com/ipfs-force-community/lotus v0.8.1-0.20260926013146-bdd0c4b3b2ae h1:4j2BwzWc6Ccs1enEIyAndMDn01rWvFqS5cGVjzltsFw=
-github.com/ipfs-force-community/lotus v0.8.1-0.20260926013146-bdd0c4b3b2ae/go.mod h1:ibveysH8RpswZUECF4aueaXRziRR5N1DACTD/MVe/Wg=
+github.com/ipfs-force-community/lotus v1.37.0-venus-rc1 h1:AmRp2HNv6IUwpw2DiTjbR+dGMF3NDg9+jof887iHRN4=
+github.com/ipfs-force-community/lotus v1.37.0-venus-rc1/go.mod h1:ibveysH8RpswZUECF4aueaXRziRR5N1DACTD/MVe/Wg=
 github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574 h1:XOkJFbRIlCkEwjkPnVLL/gDt5sfqrii5An4SzBtBtLM=
 github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574/go.mod h1:VJhKwTZEUTTgJI/uPmfJrslV4xdANy/FjkWLLx89J8k=
 github.com/ipfs-force-community/sophon-auth v1.16.0 h1:H0k77sXoUIQz/HvE7go7JYY516leUK5Mj8oU1CBRM1s=
