@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v18/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v19/miner"
 	miner1 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -217,6 +217,15 @@ func (p *Proxy) EthAddressToFilecoinAddress(in0 context.Context, in1 ethtypes.Et
 		return
 	}
 	return cli.EthAddressToFilecoinAddress(in0, in1)
+}
+
+func (p *Proxy) EthBaseFee(in0 context.Context) (out0 ethtypes.EthBigInt, err error) {
+	cli, err := p.Select(types.EmptyTSK)
+	if err != nil {
+		err = fmt.Errorf("api EthBaseFee %v", err)
+		return
+	}
+	return cli.EthBaseFee(in0)
 }
 
 func (p *Proxy) EthBlockNumber(in0 context.Context) (out0 ethtypes.EthUint64, err error) {

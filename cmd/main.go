@@ -27,7 +27,7 @@ func main() {
 		lcli.WeightCmd,
 	}
 
-	jaeger := tracing.SetupJaegerTracing(cliName)
+	jaeger := tracing.SetupOTLPTracing(context.Background(), cliName)
 	defer func() {
 		if jaeger != nil {
 			_ = jaeger.ForceFlush(context.Background())
@@ -41,7 +41,7 @@ func main() {
 			if jaeger != nil {
 				_ = jaeger.Shutdown(cctx.Context)
 			}
-			jaeger = tracing.SetupJaegerTracing(cliName + "/" + cmd.Name)
+			jaeger = tracing.SetupOTLPTracing(cctx.Context, cliName+"/"+cmd.Name)
 
 			if originBefore != nil {
 				return originBefore(cctx)
