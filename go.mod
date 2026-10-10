@@ -11,7 +11,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.10.2
 	github.com/filecoin-project/go-state-types v0.19.0
 	github.com/filecoin-project/lotus v1.36.0
-	github.com/filecoin-project/venus v1.21.0-rc1
+	github.com/filecoin-project/venus v1.21.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -60,7 +60,7 @@ require (
 	github.com/dgraph-io/ristretto v0.2.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
+	github.com/filecoin-project/go-amt-ipld/v2 v2.2.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0 // indirect
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
@@ -120,7 +120,6 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.3.0 // indirect
 	github.com/ipfs/go-ipld-format v0.6.4 // indirect
 	github.com/ipfs/go-ipld-legacy v0.3.0 // indirect
-	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipld/go-car v0.6.3 // indirect
 	github.com/ipld/go-car/v2 v2.17.0 // indirect
 	github.com/ipld/go-codec-dagpb v1.7.0 // indirect
@@ -154,7 +153,6 @@ require (
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect
-	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
@@ -236,4 +234,4 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
 
-replace github.com/filecoin-project/lotus => github.com/ipfs-force-community/lotus v1.37.0-venus-rc1
+replace github.com/filecoin-project/lotus => github.com/ipfs-force-community/lotus v1.37.0-venus
